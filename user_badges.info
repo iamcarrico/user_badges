@@ -1,4 +1,6 @@
-
 name = User badges
 description = Enables assignment of graphical badges to users and roles.
 core = 7.x
+package = User interface
+dependencies[] = image
+configure = 'admin/people/user_badges/settings'

@@ -196,7 +196,6 @@ function user_badges_uninstall() {
  * new DB structure
  */
 function user_badges_update_6001() {
-  $ret = array();
   db_drop_primary_key('user_badges_user');
   db_add_primary_key('user_badges_user', array('bid', 'uid', 'type'));
   db_add_index('user_badges_user', 'type', array('type'));
@@ -208,34 +207,22 @@ function user_badges_update_6001() {
 
 
 /**
- * @todo Please document this function.
- * @see http://drupal.org/node/1354
+ * Add the "href" field.
  */
 function user_badges_update_6100() {
-  $ret = array();
   db_add_field('user_badges_badges', 'href',
     array('type' => 'varchar', 'length' => 80, 'not null' => FALSE, 'default' => ''));
-  // hook_update_N() no longer returns a $ret array. Instead, return
-  // nothing or a translated string indicating the update ran successfully.
-  // See http://drupal.org/node/224333#update_sql.
-  return t('TODO Add a descriptive string here to show in the UI.') /* $ret */;
 }
 
 /**
- * @todo Please document this function.
- * @see http://drupal.org/node/1354
+ * Drop useless indexes.
  */
 function user_badges_update_6101() {
-  $ret = array();
   db_drop_index('user_badges_product', 'bid_nid');
   db_drop_index('user_badges_product', 'nid_bid');
   db_drop_index('user_badges_roles', 'bid_nid');
   db_drop_index('user_badges_roles', 'nid_bid');
   db_drop_index('user_badges_user', 'bid_uid_type');
-  // hook_update_N() no longer returns a $ret array. Instead, return
-  // nothing or a translated string indicating the update ran successfully.
-  // See http://drupal.org/node/224333#update_sql.
-  return t('TODO Add a descriptive string here to show in the UI.') /* $ret */;
 }
 
 /**
@@ -243,8 +230,6 @@ function user_badges_update_6101() {
  * @see http://drupal.org/node/1354
  */
 function user_badges_update_6102() {
-  $ret = array();
-
   db_change_field('user_badges_badges', 'image', 'image', array(
     'type' => 'varchar',
     'length' => 255,
@@ -260,11 +245,6 @@ function user_badges_update_6102() {
   //Add the new user weight field
   db_add_field('user_badges_user', 'userweight', array('type' => 'int', 'not null' => FALSE));
   db_add_index('user_badges_user', 'uid_weight', array('uid', 'userweight'));
-
-  // hook_update_N() no longer returns a $ret array. Instead, return
-  // nothing or a translated string indicating the update ran successfully.
-  // See http://drupal.org/node/224333#update_sql.
-  return t('TODO Add a descriptive string here to show in the UI.') /* $ret */;
 }
 
 /**
@@ -272,16 +252,9 @@ function user_badges_update_6102() {
  * @see http://drupal.org/node/1354
  */
 function user_badges_update_6103() {
-  $ret = array();
-
   //Add the new field for the taxonomy support
   db_add_field('user_badges_badges', 'tid', array('type' => 'int', 'not null' => FALSE, 'unsigned' => TRUE));
   db_add_index('user_badges_badges', 'tid_name', array('tid', 'name'));
-
-  // hook_update_N() no longer returns a $ret array. Instead, return
-  // nothing or a translated string indicating the update ran successfully.
-  // See http://drupal.org/node/224333#update_sql.
-  return t('TODO Add a descriptive string here to show in the UI.') /* $ret */;
 }
 
 
@@ -290,18 +263,11 @@ function user_badges_update_6103() {
  * Fix error in 6102.
  */
 function user_badges_update_6104() {
-  $ret = array();
-
   db_change_field('user_badges_badges', 'image', 'image', array(
     'type' => 'varchar',
     'length' => 255,
     'not null' => FALSE,
     'default' => "''",
   ));
-
-  // hook_update_N() no longer returns a $ret array. Instead, return
-  // nothing or a translated string indicating the update ran successfully.
-  // See http://drupal.org/node/224333#update_sql.
-  return t('TODO Add a descriptive string here to show in the UI.') /* $ret */;
 }
 
