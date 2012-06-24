@@ -154,35 +154,21 @@ function user_badges_schema() {
 }
 
 /**
- * Implements hook_install().
- */
-function user_badges_install() {
-  // TODO The drupal_(un)install_schema functions are called automatically in D7.
-  // drupal_install_schema('user_badges')
-}
-
-
-/**
  * Implements hook_uninstall().
  */
 function user_badges_uninstall() {
-  // Delete files.
-  $dir = file_create_path('badges');
-  if ($dir) {
+  $dir = 'public://badges';
+  if (file_prepare_directory($dir)) {
+    // Delete files if the directory exists.
     $files = file_scan_directory($dir, '/.*\.(gif|jpg|jpeg|png)/', array('recurse' => FALSE));
     foreach ($files as $file) {
       file_delete($file->filename);
     }
-  }
-
-  // Delete the badges directory.
-  if (file_exists($dir)) {
+    // Delete directory.
     rmdir($dir);
   }
 
-  // TODO The drupal_(un)install_schema functions are called automatically in D7.
-  // drupal_uninstall_schema('user_badges')
-
+  // Delete variables.
   variable_del('user_badges_showone');
   variable_del('user_badges_showblocked');
   variable_del('user_badges_userweight');
