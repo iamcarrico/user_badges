@@ -1379,6 +1379,7 @@ function theme_user_badge($variables) {
 
     $pieces = parse_url($href);
     $pieces['html'] = TRUE;
+    $pieces['path'] = isset($pieces['path']) ? $pieces['path'] : '';
     if (isset($pieces['scheme'])) {
       $pieces['path'] = $pieces['scheme'] . '://' . $pieces['host'] . $pieces['path'];
     }
