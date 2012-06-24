@@ -11,11 +11,11 @@
  *   - do not forget to set up your cron
  */
 function user_badges_cron() {
-  $result = db_query('SELECT * FROM {user_badges_roles}');
+  $results = db_query('SELECT * FROM {user_badges_roles}');
 
   $roles = array();
-  while ($o = db_fetch_object($result)) {
-    $roles[$o->rid] = $o->bid;
+  foreach($results as $result) {
+    $roles[$result->rid] = $result->bid;
   }
 
   user_badges_save_roles($roles);   // Yuck!
