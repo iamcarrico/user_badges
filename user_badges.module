@@ -28,11 +28,11 @@ define('EDIT_DELETE_ARG_POSITION', 5);
 function user_badges_init() {
   // Add any other module that can initiate actions.
   if (module_exists('trigger') || module_exists('rules')) {
-    include_once(drupal_get_path('module', 'user_badges') . '/user_badges.actions.inc');
+    module_load_include('inc', 'user_badges', 'user_badges.actions');
   }
 
   if (module_exists('autoassignrole')) {
-    include_once(drupal_get_path('module', 'user_badges') . '/user_badges.autoassignrole.inc');
+    module_load_include('inc', 'user_badges', 'user_badges.autoassignrole');
   }
 }
 
