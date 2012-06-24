@@ -1122,19 +1122,11 @@ function user_badges_get_roles($rid = NULL, $options = array()) {
  *   An array in the format rid => bid for each role/badge relationship.
  */
 function user_badges_save_roles($roles) {
-  // @TODO: I (Nancy) think this is all wrong.
-  // user_badges_for_uid can easily pick stuff up by the user's roles.
-  // Otherwise, we can have stale data in the user table.
   if (is_array($roles)) {
     // We have to clear out all badges first.
     $success = TRUE;
-
-    db_delete('user_badges_roles')
-      ->execute();
-
-    db_delete('user_badges_user')
-      ->condition('type', 'role')
-      ->execute();
+    db_query('DELETE FROM {user_badges_roles}');
+    db_query("DELETE FROM {user_badges_user} WHERE type='role'");
 
     // Now we loop through the roles and their badges, and assign them to
     // each user accordingly.
@@ -1142,81 +1134,47 @@ function user_badges_save_roles($roles) {
       if ($bid) {
         // First of all, insert all the role and badge relationship
         // into user_badges_roles.
-        $id = db_insert('user_badges_roles')
-          ->fields(array(
-            'rid' => $rid,
-            'bid' => $bid,
-            ))
-          ->execute();
-        $success = $success && !empty($id);
+        $success = $success && db_query("INSERT INTO {user_badges_roles} (rid, bid) VALUES (:rid, :bid)", array(':rid' => $rid, ':bid' => $bid));
 
         // For all of these queries, we LEFT JOIN user_badges_user to check
         // whether there are existing entries for that badge for that user
         // of the "role" type. Otherwise, we get database errors when
         // multiple roles assign the same badge.
 
-        // @TODO: rid>2 is a different query: user_roles vs users.
-        $query = db_select('users', 'u')
-          ->fields('u', array('uid'))
-          ->condition('u.status', 0)
-          ->condition('ubu.bid', $bid)
-          ->isNull('ubu.uid')
-          ;
-        if ($rid > 2) {
-          $query->condition();
-        }
-        $query->leftJoin('user_badges_user', 'ubu', "ubu.uid=u.uid AND ubu.type='role'");
-        $uid = $query->execute()->fetchCol();
-        /*
-        $uid = db_query("
-          SELECT u.uid
+        // The blocked user "role" (represented as rid 0) has no entry in
+        // the users_role table, so it needs its own special query.
+        if ($rid == 0) {
+          $success = $success && db_query("
+            INSERT INTO {user_badges_user} (uid, bid, type)
+            SELECT u.uid, :bid, 'role'
             FROM {users} u
             LEFT JOIN {user_badges_user} ubu
             ON ubu.uid=u.uid AND ubu.bid=:bid AND ubu.type='role'
             WHERE status = 0 AND ubu.uid IS NULL
-            ", array(':bid' => $bid))->fetchCol();  /* */
-//          dsm('user '.print_r($uid, true));
-
-        // The blocked user "role" (represented as rid 0) has no entry in
-        // the users_role table, so it needs its own special query.
-
-        // @TODO: fix these queries.
-        if ($rid == 0) {
-          $success = $success && db_query("
-            INSERT INTO {user_badges_user} (uid, bid, type)
-            SELECT u.uid, %d, 'role'
-            FROM {users} u
-            LEFT JOIN {user_badges_user} ubu
-            ON ubu.uid=u.uid AND ubu.bid=%d AND ubu.type='role'
-            WHERE status = 0 AND ubu.uid IS NULL
-          ", $bid, $bid);
+          ", array(':bid' => $bid));
         }
         // The authenticated user role (represented as rid 2) has no entry
         // in the users_role table, so it needs its own special query.
         elseif ($rid == 2) {
           $success = $success && db_query("
             INSERT INTO {user_badges_user} (uid, bid, type)
-            SELECT u.uid, %d, 'role'
+            SELECT u.uid, :bid, 'role'
             FROM {users} u
             LEFT JOIN {user_badges_user} ubu
-            ON ubu.uid=u.uid AND ubu.bid=%d AND ubu.type='role'
+            ON ubu.uid=u.uid AND ubu.bid=:bid AND ubu.type='role'
             WHERE u.uid > 0 AND ubu.uid IS NULL
-          ", $bid, $bid);
+          ", array(':bid' => $bid));
         }
         // For all the normal roles, we want to run this query.
         else {
-          $insert = db_insert('user_badges_user')
-            ->fields(array('uid' => $uid, 'bid' => $bid, 'rid' => $rid))
-            ->execute();
-/*
           $success = $success && db_query("
             INSERT INTO {user_badges_user} (uid, bid, type)
-            SELECT ur.uid, %d, 'role'
+            SELECT ur.uid, :bid, 'role'
             FROM {users_roles} ur
             LEFT JOIN {user_badges_user} ubu
-            ON ubu.uid=ur.uid AND ubu.bid=%d AND ubu.type='role'
-            WHERE ur.rid=%d AND ubu.uid IS NULL
-          ", $bid, $bid, $rid); /* */
+            ON ubu.uid=ur.uid AND ubu.bid=:bid AND ubu.type='role'
+            WHERE ur.rid=:rid AND ubu.uid IS NULL
+          ", array(':bid' => $bid, ':rid' => $rid));
         }
       }
     }
