@@ -948,4 +948,47 @@ function user_badges_get_term_from_vid($vid) {
     }
 
     return $data;
+/**
+ * User badge deletion form.
+ */
+function user_badges_delete_form($form, $form_state, $badge) {
+  $form = array();
+  $form['badge'] = array('#type' => 'value', '#value' => $badge);
+
+  $form['badge_img'] = array('#value' => theme('user_badge_group', array('badgeimages' => array(theme('user_badge', array('badge' => $badge))))));
+
+  return confirm_form($form, t('Are you sure you want to delete the badge %name?', array('%name' => $badge->name)), BASE_ADMIN_PATH);
+}
+
+/**
+ * Submit handler for user badge deletion.
+ */
+function user_badges_delete_form_submit($form, &$form_state) {
+  $badge = $form_state['values']['badge'];
+  $bid = $badge->bid;
+  $name = $badge->name;
+
+  // Let other modules know about this.
+  module_invoke_all('user_badges_delete', $badge);
+
+  if (is_numeric($badge->image)) {
+    // Also delete file usage.
+    $file = file_load($badge->image);
+    file_usage_delete($file, 'user_badges', 'user_badge', $badge->bid);
+  }
+
+  db_delete('user_badges_badges')
+    ->condition('bid', $bid)
+    ->execute();
+
+  db_delete('user_badges_user')
+    ->condition('bid', $bid)
+    ->execute();
+
+  db_delete('user_badges_roles')
+    ->condition('bid', $bid)
+    ->execute();
+
+  drupal_set_message(t('The @name badge has been deleted.', array('@name' => $name)));
+  $form_state['redirect'] = BASE_ADMIN_PATH;
 }

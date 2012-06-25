@@ -111,7 +111,7 @@ function user_badges_menu() {
     'page arguments' => array('user_badges_badgelist_form'),
     'access arguments' => array('manage badges'),
     'file' => 'user_badges.admin.inc',
-    );
+  );
 
   $items[BASE_ADMIN_PATH . '/list'] = array(
     'title' => 'List',
@@ -121,7 +121,7 @@ function user_badges_menu() {
     'type' => MENU_DEFAULT_LOCAL_TASK,
     'weight' => -10,
     'file' => 'user_badges.admin.inc',
-    );
+  );
 
   $items[BASE_ADMIN_PATH . '/add'] = array(
     'title' => 'Add new badge',
@@ -130,7 +130,7 @@ function user_badges_menu() {
     'access arguments' => array('manage badges'),
     'type' => MENU_LOCAL_ACTION,
     'file' => 'user_badges.admin.inc',
-    );
+  );
 
   $items[BASE_ADMIN_PATH . '/images'] = array(
     'title' => 'Images',
@@ -139,7 +139,7 @@ function user_badges_menu() {
     'access arguments' => array('manage badges'),
     'type' => MENU_LOCAL_TASK,
     'file' => 'user_badges.admin.inc',
-    );
+  );
 
   $items[BASE_ADMIN_PATH . '/roles'] = array(
     'title' => 'Roles',
@@ -148,7 +148,7 @@ function user_badges_menu() {
     'access arguments' => array('manage badges'),
     'type' => MENU_LOCAL_TASK,
     'file' => 'user_badges.admin.inc',
-    );
+  );
 
   $items[BASE_ADMIN_PATH . '/settings'] = array(
     'title' => 'Settings',
@@ -157,61 +157,61 @@ function user_badges_menu() {
     'access arguments' => array('manage badges'),
     'type' => MENU_LOCAL_TASK,
     'file' => 'user_badges.admin.inc',
-    );
+  );
 
-  $items[BASE_ADMIN_PATH . '/edit/%'] = array(
+  $items[BASE_ADMIN_PATH . '/edit/%user_badge'] = array(
     'title' => 'Edit badge',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('user_badges_edit_form', EDIT_DELETE_ARG_POSITION),
     'access arguments' => array('manage badges'),
     'type' => MENU_CALLBACK + MENU_VISIBLE_IN_BREADCRUMB,
     'file' => 'user_badges.admin.inc',
-    );
+  );
 
-  $items[BASE_ADMIN_PATH . '/delete/%'] = array(
+  $items[BASE_ADMIN_PATH . '/delete/%user_badge'] = array(
     'title' => 'Delete badge',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('user_badges_delete_form', EDIT_DELETE_ARG_POSITION),
     'access arguments' => array('manage badges'),
     'type' => MENU_CALLBACK + MENU_VISIBLE_IN_BREADCRUMB,
     'file' => 'user_badges.admin.inc',
-    );
+  );
 
-  $items['user/%/badges'] = array(
+  $items['user/%user/badges'] = array(
     'title' => 'Badges',
     'page callback' => 'user_badges_userweight_page',
     'page arguments' => array(1),
     'access arguments' => array('change badge assignments'),
     'type' => MENU_LOCAL_TASK,
     'weight' => 4,
-    );
+  );
 
-  $items['user/%/badges/list'] = array(
+  $items['user/%user/badges/list'] = array(
     'title' => 'List',
     'page callback' => 'user_badges_userweight_page',
     'page arguments' => array(1),
     'access arguments' => array('change badge assignments'),
     'type' => MENU_DEFAULT_LOCAL_TASK,
     'weight' => -10,
-    );
+  );
 
-  $items['user/%/badges/whoelse'] = array(
+  $items['user/%user/badges/whoelse'] = array(
     'title' => 'Who Else',
     'page callback' => 'user_badges_userweight_page',
     'page arguments' => array(1),
     'access arguments' => array('change badge assignments'),
     'type' => MENU_LOCAL_TASK,
     'weight' => 0,
-    );
+  );
 
-  $items['user/%/badges/edit'] = array(
+  $items['user/%user/badges/edit'] = array(
     'title' => 'Edit',
     'page callback' => 'user_badges_page',
     'page arguments' => array(1),
     'access arguments' => array('change badge assignments'),
     'type' => MENU_LOCAL_TASK,
     'weight' => 5,
-    );
+  );
 
   // Menu item to allow a user to change their own badge assignments.
   $items['user/%user/edit/badges'] = array(
@@ -221,14 +221,14 @@ function user_badges_menu() {
     'access arguments' => array('change own badge assignments'),
     'type' => MENU_LOCAL_TASK,
     'weight' => 5,
-    );
+  );
 
   $items['user_badges/autocomplete'] = array(
     'title' => 'User Badges Badge Name Autocomplete',
     'page callback' => 'user_badges_badge_autocomplete',
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
-    );
+  );
 
   return $items;
 }
@@ -645,31 +645,22 @@ function user_badges_badge_autocomplete_validation($value) {
  * Note: menu system passes user/% as integer,
  * but user/%user as an object (with badges).
  */
-function user_badges_page($uid) {
-  if (is_object($uid)) {
-    $account = $uid;
-  }
-  else {
-    $account = user_load($uid);
-  }
-
+function user_badges_page($account) {
   drupal_set_title(t('Edit badges for %user_name', array('%user_name' => $account->name)), PASS_THROUGH);
 
   return drupal_get_form('user_badges_change_form', $account);
-
 }
 
 /**
  * Define the page on user/uid/badges.
  */
-function user_badges_userweight_page($uid) {
+function user_badges_userweight_page($account) {
   global $user;
-  $account = user_load($uid);
 
   drupal_set_title(t('Badges for %user_name', array('%user_name' => format_username($account))), PASS_THROUGH);
 
   // Do we have the right to rearrange badges?
-  if (variable_get('user_badges_userweight', 0) && ($account->uid == $user->uid || user_access('change badge assignments')) ) {
+  if (variable_get('user_badges_userweight', 0) && ($account->uid == $user->uid || user_access('change badge assignments'))) {
     // If the setting allows it and we are the badge owner or somebody with permission, yes.
     return drupal_get_form('user_badges_userweight_form', $account);
   }
@@ -1013,68 +1004,14 @@ function user_badges_get_badges($uid, $options = array()) {
 }
 
 /**
- * Return badge object for given badge id
+ * Load a badge object from database.
  */
-function user_badges_get_badge($bid) {
+function user_badge_load($bid) {
   return db_select('user_badges_badges', 'ubb')
+    ->condition('bid', $bid)
     ->fields('ubb')
     ->execute()
     ->fetchObject();
-}
-
-/**
- * User badge deletion form.
- */
-function user_badges_delete_form($form, $form_state, $bid) {
-  if ($badge = user_badges_get_badge($bid)) {
-    $form = array();
-    $form['badge'] = array('#type' => 'value', '#value' => $badge);
-
-    $form['badge_img'] = array('#value' => theme('user_badge_group', array('badgeimages' => array(theme('user_badge', array('badge' => $badge))))));
-
-    return confirm_form($form, t('Are you sure you want to delete the badge %name?', array('%name' => $badge->name)), BASE_ADMIN_PATH);
-  }
-  form_set_error('', t('This badge does not exist.'));
-}
-
-/**
- * Submit handler for user badge deletion.
- */
-function user_badges_delete_form_submit($form, &$form_state) {
-  $badge = $form_state['values']['badge'];
-  $bid = $badge->bid;
-  $name = $badge->name;
-
-  // Let other modules know about this.
-  module_invoke_all('user_badges_delete', $badge);
-
-  user_badges_delete_badge($bid);
-
-  drupal_set_message(t('The @name badge has been deleted.', array('@name' => $name)));
-  $form_state['redirect'] = BASE_ADMIN_PATH;
-}
-
-/**
- * Deletes a user_badge from all the tables.
- * It is the caller's responsibilty to let the user know this has been done.
- *
- * @param $bid
- *   The badge ID.
- */
-function user_badges_delete_badge($bid) {
-  if (user_access('manage badges')) {
-    db_delete('user_badges_badges')
-      ->condition('bid', $bid)
-      ->execute();
-
-    db_delete('user_badges_user')
-      ->condition('bid', $bid)
-      ->execute();
-
-    db_delete('user_badges_roles')
-      ->condition('bid', $bid)
-      ->execute();
-  }
 }
 
 /**
