@@ -1223,16 +1223,19 @@ function _user_badges_build_image($badge) {
   $alt = check_plain($badge->name);
 
   if (!isset($badge->class)) {
-    $badge->class = "badge badge-$badge->bid " . drupal_html_class($badge->name);
+    $badge->class = "badge badge-{$badge->bid} badge-" . drupal_html_class($badge->name);
   }
 
+  if (file_valid_uri($badge->image)) {
+    $badge->image = file_create_url($badge->image);
+  }
   $variables = array(
     'style_name' => $style_name,
     'path' => $badge->image,
     'alt' => $alt,
     'title' => $alt,
     'attributes' => array('class' => $badge->class),
-    );
+  );
   $theme = $style_name ? 'image_style' : 'image';
   $image = theme($theme, $variables);
 
@@ -1245,23 +1248,13 @@ function _user_badges_build_image($badge) {
  */
 function theme_user_badge($variables) {
   $badge = $variables['badge'];
-  $account = $variables['account'];
-  // If we haven't been supplied with a user, use whoever is logged in
-  global $user;
-  if (is_null($account)) {
-    $account = $user;
-  }
-
-  if (!isset($badge->class)) {
-    $badge->class = "badge badge-$badge->bid " . drupal_html_class($badge->name);
-  }
-
   $image = _user_badges_build_image($badge);
 
   // We don't link the badge if there is no link and no default,
   // or if the default is overridden.
   if (($badge->href == '' && !variable_get('user_badges_defaulthref', ''))
-    || drupal_strtolower($badge->href) == '<none>') {
+    || drupal_strtolower($badge->href) == '<none>'
+  ) {
     return $image;
   }
   else {

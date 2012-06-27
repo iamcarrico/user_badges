@@ -210,64 +210,115 @@ function theme_user_badges_badgelist_form($variables) {
 /**
  * Define the edit form for userbadges.
  */
-function user_badges_edit_form($form, $form_state, $bid = NULL) {
-  // If we have been given an existing badge (bid) then get all the badge info into $edit.
-  if (is_numeric($bid)) {
-    $edit = db_select('user_badges_badges', 'ubb')
-      ->fields('ubb')
-      ->condition('bid', $bid)
-      ->execute();
-
-    if ($edit->rowCount() > 0) {
-      $form['bid'] = array(
-        '#type' => 'value',
-        '#value' => $bid,
-      );
-
-      $edit = $edit->fetchObject();
-    }
+function user_badges_edit_form($form, $form_state, $badge = NULL) {
+  // If we have been given an existing badge then pass the bid.
+  if ($badge) {
+    $form['bid'] = array(
+      '#type' => 'value',
+      '#value' => $badge->bid,
+    );
   }
 
-  // Are we using a library image or an image URL?
-  $libraryimage = '';
-  $imageurl = '';
-  if (isset($edit) && $edit->image) {
-    $libraryimage = $edit->image;
-  }
-
-  $form['name'] = array(
+  // General information fieldset.
+  $form['general'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('General'),
+    '#collapsible' => TRUE,
+    '#weight' => -10,
+  );
+  $form['general']['name'] = array(
     '#type' => 'textfield',
     '#title' => t('Name'),
-    '#default_value' => isset($edit) ? $edit->name : '',
+    '#default_value' => $badge ? $badge->name : '',
     '#size' => 40,
     '#maxlength' => 100,
     '#description' => t('Name for the badge. Will be displayed as a tooltip when rolling over the badge.'),
     '#required' => TRUE,
     '#weight' => -10,
-    );
+  );
 
-  $form['imageurl'] = array(
+  // Let the user choose the image location (URL, upload, library).
+  $form['general']['image_location'] = array(
+    '#type' => 'radios',
+    '#title' => t('Image location'),
+    '#options' => array(
+      'external' => t('External'),
+      'upload' => t('Upload new image'),
+      'library' => t('Image from library'),
+    ),
+    // Are we using a library image (integer) or an image URL (string)?
+    '#default_value' => !$badge || !file_valid_uri($badge->image) ? 'external' : 'library',
+  );
+
+  // External url.
+  $form['general']['imageurl'] = array(
     '#type' => 'textfield',
     '#title' => t('Image URL'),
-    '#default_value' => $imageurl,
+    '#default_value' => isset($badge->image) && !file_valid_uri($badge->image) ? $badge->image : '',
     '#size' => 60,
     '#maxlength' => 255,
     '#description' => t('The image URL for this badge. If you want to use an image from the user badges image library, select from the list below.'),
-    '#weight' => -8,
-    );
+    '#states' => array(
+      'visible' => array(
+        ':input[name="image_location"]' => array('value' => 'external'),
+      ),
+    ),
+  );
 
-  $form['weight'] = array(
+  // File upload.
+  $form['general']['imagefile'] = array(
+    '#type' => 'managed_file',
+    '#title' => t('Upload image'),
+    '#description' => t('The image file for this badge. This image will then be available in the library after badge creation.'),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="image_location"]' => array('value' => 'upload'),
+      ),
+    ),
+  );
+
+  // File from library.
+  $form['general']['imagefromlibrary'] = array(
+    '#title' => t('Image from library'),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="image_location"]' => array('value' => 'library'),
+      ),
+    ),
+  );
+  $images = _user_badges_images_from_library();
+  if (count($images)) {
+    $options = array();
+    // Transform images to options
+    foreach ($images as $path => $image_data) {
+      $options[$path] = $image_data->image;
+    }
+    $form['general']['imagefromlibrary'] += array(
+      '#type' => 'radios',
+      '#default_value' => isset($badge->image) && file_valid_uri($badge->image) ? $badge->image : reset(array_keys($options)),
+      '#options' => $options
+    );
+  }
+  else {
+    $form['general']['imagefromlibrary'] += array(
+      '#type' => 'item',
+      '#description' => t('No badge images uploaded yet. You can upload an image by choosing "Upload image" above or choose to use an external URL.'),
+    );
+  }
+
+  // Provide other general informations.
+  $form['general']['weight'] = array(
     '#type' => 'textfield',
     '#title' => t('Weight'),
     '#size' => 4,
     '#maxlength' => 10,
-    '#default_value' => isset($edit) ? $edit->weight : 0,
+    '#default_value' => $badge ? $badge->weight : 0,
     '#description' => t('Lighter weighted items float to the top of lists. Heavier items go to the bottom. You must enter a number (negative values are allowed).'),
     '#required' => TRUE,
-    '#weight' => -7,
-    );
+    '#weight' => 1,
+  );
 
-  $form['href'] = array(
+  $form['general']['href'] = array(
     '#type' => 'textfield',
     '#title' => t('Description URL'),
     '#size' => 60,
@@ -276,14 +327,14 @@ function user_badges_edit_form($form, $form_state, $bid = NULL) {
       This is useful for explanation pages about the badge, for instance. If you do not wish
       your badge to be clickable, please leave this field empty.') . '<br />' .
       '<u>' . t('Tips:') . '</u>' . '<ul>' .
-        '<li>' . t('If you provide the full URL, it will be considered an external URL.') . '</li>' .
-        '<li>' . t('If you provide only the path (e.g. "admin/content/node"), it is considered an
+      '<li>' . t('If you provide the full URL, it will be considered an external URL.') . '</li>' .
+      '<li>' . t('If you provide only the path (e.g. "admin/content/node"), it is considered an
           internal link.') . '</li>' .
-        '<li>' . t('Use %none to override a default link in the settings tab with no link for this badge.', array('%none' => '<none>')) . '</li>' .
+      '<li>' . t('Use %none to override a default link in the settings tab with no link for this badge.', array('%none' => '<none>')) . '</li>' .
       '</ul>',
-    '#default_value' => !empty($edit) ? $edit->href : '',
-    '#weight' => -6,
-    );
+    '#default_value' => $badge ? $badge->href : '',
+    '#weight' => 1,
+  );
 
   // Tokens help.
   if (module_exists('token')) {
@@ -293,12 +344,12 @@ function user_badges_edit_form($form, $form_state, $bid = NULL) {
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
       '#weight' => -3,
-      );
+    );
 
     $form['token_help']['help'] = array(
       '#theme' => 'token_tree',
       '#token_types' => array('userbadge', 'user'),
-      );
+    );
   }
   else {
     $form['token_help'] = array(
@@ -307,43 +358,43 @@ function user_badges_edit_form($form, $form_state, $bid = NULL) {
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
       '#weight' => -3,
-      );
+    );
     $form['token_help']['help'] = array(
-        // Ignore Coder flag on the link.
-        '#value' => t('Install the <a href="!link">Token</a> module if you want this URL to include dynamic elements such as badge ID numbers.',
-          array('!link' => url('http://drupal.org/project/token', array('absolute' => TRUE)))
-          ),
-        );
+      '#value' => t('Install the <a href="!link">Token</a> module if you want this URL to include dynamic elements such as badge ID numbers.',
+        array('!link' => url('http://drupal.org/project/token', array('absolute' => TRUE)))
+      ),
+    );
   }
 
+  // Display options.
   $form['options'] = array(
     '#type' => 'fieldset',
     '#title' => t('Display options'),
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
     '#weight' => -2,
-    );
+  );
 
   $form['options']['unhideable'] = array(
     '#type' => 'checkbox',
     '#title' => t('Cannot be Hidden'),
-    '#default_value' => !empty($edit) ? $edit->unhideable : '',
+    '#default_value' => $badge ? $badge->unhideable : '',
     '#description' => t('If this is set, the badge cannot be hidden by being moved down in weight. It will always show up.'),
-    );
+  );
 
   $form['options']['fixedweight'] = array(
     '#type' => 'checkbox',
     '#title' => t('Fixed Weight'),
-    '#default_value' => !empty($edit) ? $edit->fixedweight : '',
+    '#default_value' => $badge ? $badge->fixedweight : '',
     '#description' => t('If this is set, the badge cannot have a user assigned weight, regardless of settings.'),
-    );
+  );
 
   $form['options']['doesnotcounttolimit'] = array(
     '#type' => 'checkbox',
     '#title' => t('Does Not Count to Limit'),
     '#default_value' => !empty($edit) ? $edit->doesnotcounttolimit : '',
     '#description' => t('If this is set, the badge does not count towards the limit for number of badges to display per user.'),
-    );
+  );
 
   if (module_exists('taxonomy')) {
     $badges_vid = variable_get('user_badges_vid', '');
@@ -354,15 +405,15 @@ function user_badges_edit_form($form, $form_state, $bid = NULL) {
         '#title' => t('Taxonomy Relation'),
         '#type' => 'select',
         '#options' => !empty($terms) ? $terms : array(t('There are no terms in the selected vocabulery')),
-        '#default_value' => !empty($edit) ? $edit->tid : '',
+        '#default_value' => $badge ? $badge->tid : '',
         '#weight' => -1,
-        );
+      );
     }
     else {
       $form['tid']['help'] = array(
         '#value' => t('Activate the taxonomy module if you want to associate badges with taxonomy terms.'),
-       '#weight' => -1,
-        );
+        '#weight' => -1,
+      );
     }
   }
 
@@ -370,38 +421,7 @@ function user_badges_edit_form($form, $form_state, $bid = NULL) {
     '#type' => 'submit',
     '#value' => t('Save badge'),
     '#weight' => 1,
-    );
-
-  $selects = array('' => t('Use the image URL above instead of a library image.')) + user_badges_image_selects();
-
-  // Note: using weights from here allows other modules to insert fields above
-  // the image list.
-
-  if (count($selects)) {
-    $form['image'] = array(
-      '#type' => 'radios',
-      '#title' => t('Image Library'),
-      '#default_value' => $libraryimage,
-      '#options' => $selects,
-      '#description' => t('If you have not entered an image URL above, you can select an image from this user badges image library to associate with this badge. You can upload additional images to the library under the <a href="@url">images</a> tab.', array('@url' => url(BASE_ADMIN_PATH . '/images'))),
-      '#weight' => 10,
-      );
-  }
-  else {
-    $form['noimages'] = array(
-      '#type' => 'item',
-      '#title' => t('Image'),
-      '#value' => t('No badge images uploaded.'),
-      '#description' => t('You can enter an image URL directly above, but if you want to instead upload your image to the user badges image library, use <a href="@upload_link">this link</a>. Note that private download is incompatible with this library and should use direct URL entry instead.', array('@upload_link' => url(BASE_ADMIN_PATH . '/images'))),
-      '#weight' => 10,
-      );
-  }
-
-  $form['submit2'] = array(
-    '#type' => 'submit',
-    '#value' => t('Save badge'),
-    '#weight' => 100,
-    );
+  );
 
   return $form;
 }
@@ -410,24 +430,29 @@ function user_badges_edit_form($form, $form_state, $bid = NULL) {
  * Validate user_badges_edit_form form submissions.
  */
 function user_badges_edit_form_validate($form, &$form_state) {
-  // Either a URL or an item from the image library should be selected, but not both.
-  if ($form_state['values']['imageurl'] && $form_state['values']['image']) {
-    form_set_error('image', t('You cannot both enter an image URL and select an image from the library too. A badge can only have one image.'));
+  // Verify that the user has provided the required information based
+  // upon the image location choosen.
+  $image_location = $form_state['values']['image_location'];
+  if ($image_location == 'external') {
+    if (!$form_state['values']['imageurl']) {
+      form_set_error('imageurl', t('You must enter an image URL.'));
+    }
+    elseif (!valid_url($form_state['values']['imageurl'], TRUE)) {
+      // The image URL must also be a valid url.
+      form_set_error('imageurl', t('This is not a valid image URL. You need to enter a complete image URL, including the "http://" at the start.'));
+    }
   }
-  elseif (!$form_state['values']['imageurl'] && !$form_state['values']['image']) {
-    form_set_error('image', t('You need to either enter an image URL or select an image from the library. Your badge needs an image.'));
+  elseif ($image_location == 'upload' && !$form_state['values']['imagefile']) {
+    form_set_error('imagefile', t('You need to upload a local file.'));
   }
-
-  // The image URL must be a valid url.
-  if ($form_state['values']['imageurl'] && !valid_url($form_state['values']['imageurl'], TRUE)) {
-    form_set_error('imageurl', t('This is not a valid image URL. You need to enter a complete image URL, including the "http://" at the start.'));
+  elseif ($image_location == 'library' && empty($form_state['values']['imagefromlibrary'])) {
+    form_set_error('imagelibrary', t('Your library is empty, please upload a file.'));
   }
 
   // Weights must be numeric.
   if (!is_numeric($form_state['values']['weight'])) {
     form_set_error('weight', t('Your value for the weight must be a number. Negative numbers are allowed, but not decimals.'));
   }
-
 }
 
 /**
@@ -453,20 +478,45 @@ function user_badges_edit_form_submit($form, &$form_state) {
     $result = db_insert('user_badges_badges');
   }
 
-  $image = $edit->imageurl ? trim($edit->imageurl) : $edit->image;
+  // Define image data (string or integer)
+  switch ($edit->image_location) {
+    case 'external':
+      $image = trim($edit->imageurl);
+      break;
+    case'upload':
+      $image = $edit->imagefile;
+      break;
+    case'library':
+      $image = $edit->imagefromlibrary;
+  }
 
   // Add the rest of the fields.
-  $result->fields(array(
-      'name' => trim($edit->name),
-      'image' => $image,
-      'weight' => $edit->weight,
-      'href' => (!empty($edit->href) ? trim($edit->href) : NULL),
-      'unhideable' => $edit->unhideable,
-      'fixedweight' => $edit->fixedweight,
-      'doesnotcounttolimit' => $edit->doesnotcounttolimit,
-      'tid' => (!empty($edit->tid) ? $edit->tid : NULL),
-      ))
+  $bid = $result->fields(array(
+    'name' => trim($edit->name),
+    'image' => $image,
+    'weight' => $edit->weight,
+    'href' => (!empty($edit->href) ? trim($edit->href) : NULL),
+    'unhideable' => $edit->unhideable,
+    'fixedweight' => $edit->fixedweight,
+    'doesnotcounttolimit' => $edit->doesnotcounttolimit,
+    'tid' => (!empty($edit->tid) ? $edit->tid : NULL),
+  ))
     ->execute();
+
+  if ($edit->image_location == 'upload') {
+    $bid = isset($edit->bid) ? $edit->bid : $bid;
+    // Make the uploaded file permanent.
+    $file = file_load($form_state['values']['imagefile']);
+    $file->status = FILE_STATUS_PERMANENT;
+    $file = file_move($file, 'public://badges');
+    // Record that the module is using the file.
+    file_usage_add($file, 'user_badges', 'user_badge', $bid);
+    // Update the image url for the badge
+    $result = db_merge('user_badges_badges')
+      ->key(array('bid' => $bid))
+      ->fields(array('image' => $file->uri))
+      ->execute();
+  }
 
   if ($result) {
     drupal_set_message(t('Badge %badgename saved.', array('%badgename' => $edit->name)));
@@ -482,94 +532,31 @@ function user_badges_edit_form_submit($form, &$form_state) {
  * Form to upload the badge images or to delete existing ones.
  */
 function user_badges_images_form($form, $form_state) {
-  $form = array('#skip_duplicate_check' => TRUE);
-  $form['new']['upload'] = array(
-    '#type' => 'managed_file',
-    '#title' => t('Upload image'),
-    '#upload_location' => 'public://badges',
-    );
-/*
-  $form['new']['attach'] = array(
-    '#type' => 'submit',
-    '#value' => t('Upload'),
-    );
-
-  $form['#attributes']['enctype'] = 'multipart/form-data';
-*/
-  $selects = user_badges_image_selects();
+  $selects = _user_badges_images_from_library();
   if (count($selects)) {
     $form['images'] = array('#tree' => TRUE);
-    foreach ($selects as $imagepath => $imageimg) {
-      $form['images'][$imagepath] = array(
+    foreach ($selects as $filepath => $image) {
+      $form['images'][$filepath] = array(
         '#type' => 'checkbox',
-        '#title' => $imageimg,
+        '#title' => $image->image,
         '#return_value' => 1,
         '#default_value' => FALSE,
-        '#description' => check_plain($imagepath),
-        );
+        '#description' => check_plain($image->file->uri),
+      );
     }
     $form['delete_image'] = array(
       '#type' => 'submit',
       '#value' => t('Delete'),
     );
   }
+  else {
+    $form['empty'] = array(
+      '#type' => 'item',
+      '#description' => t('There are no images in your library at the moment. You can add one !create_link and uploading an image.', array('!create_link' => l(t('by creating a badge'), 'admin/config/people/user_badges/add'))),
+    );
+  }
+
   return $form;
-}
-
-/**
- * Validate the uploaded image
- *
- * Check whether:
- * Delete has been chosen AND a checkbox has been selected
- * OR
- * Upload has been chosen AND the file upload form is not empty.
- */
-function _user_badges_images_form_validate($form, &$form_state) {
-  $op = $form_state['clicked_button']['#value'];
-  if ($op == t('Upload')) {
-    $dir = 'public://badges';
-
-    $is_writable = file_prepare_directory($dir, 1);
-    if ($is_writable) {
-      $validators = array(
-        'file_validate_extensions' => array('png jpg jpeg gif'),
-      );
-
-      if ($file = file_save_upload('upload', $validators, $dir)) {
-        if (!image_get_info($file->uri)) {
-          file_delete($file->uri);
-          form_set_error('upload', t('Uploaded image file does not appear to be a valid image file.  Please try again'));
-        }
-        else {
-          user_badges_hold_temporary_file($file);
-          $form_state['values']['file_image'] = $file;
-        }
-      }
-      else {
-        form_set_error('upload', t('Cannot save image.  Enter the path to an image and try again.'));
-      }
-    }
-    else {
-      form_set_error('upload', t('Cannot save image - directory not writable'));
-    }
-  }
-  elseif ($op == t('Delete')) {
-    if (count(array_filter($form_state['values']['images'])) == 0) {
-      form_set_error('images', t('Please select images to delete.'));
-    }
-  }
-}
-
-/**
- * @todo Please document this function.
- * @see http://drupal.org/node/1354
- */
-function user_badges_hold_temporary_file($file = NULL) {
-  static $static_file;
-  if (isset($file)) {
-    $static_file = $file;
-  }
-  return $file;
 }
 
 /**
@@ -578,46 +565,35 @@ function user_badges_hold_temporary_file($file = NULL) {
  * Save the uploaded file or delete the selected one
  */
 function user_badges_images_form_submit($form, &$form_state) {
-  $op = $form_state['clicked_button']['#value'];
-  switch ($op) {
-    case t('Upload'):
-      // Save uploaded files.
-//      $file = $form_state['values']['file_image'];
-      $file = file_load($form_state['values']['file_image']);
-      $file->status = FILE_STATUS_PERMANENT;
-      $file = file_save($file);
-      break;
+  $files_to_delete = array_keys(array_filter($form_state['values']['images']));
+  if (!empty($files_to_delete)) {
+    $dir = 'public://badges';
+    if (file_prepare_directory($dir)) {
+      foreach ($files_to_delete as $path) {
+        $fid = db_select('file_managed', 'f')
+          ->fields('f', array('fid'))
+          ->condition('f.uri', $path)
+          ->execute()
+          ->fetchField();
 
-    case t('Delete'):
-      foreach ($form_state['values']['images'] as $path => $is_removed) {
-        if ($is_removed) {
-          $to_delete[] = $path;
+        // If the file is managed, verify that it is not used
+        if ($fid) {
+          $file = file_load($fid);
+          $num_rows = db_select('user_badges_badges', 'ubb')
+            ->condition('ubb.image', $path)
+            ->countQuery()
+            ->execute()
+            ->fetchField();
+          if (!$file || $num_rows || !file_delete($file)) {
+            drupal_set_message(t('The file %file is still being used for some badges.',
+              array('%file' => $path)), 'error');
+          }
+        }
+        else {
+          // If it not managed, delete it
+          file_unmanaged_delete($path);
         }
       }
-      if (is_array($to_delete)) {
-        user_badges_image_delete($to_delete);
-      }
-      break;
-  }
-}
-
-/**
- * Delete the specified image.
- */
-function user_badges_image_delete($to_delete) {
-  $dir = 'public://badges/';
-
-  $is_writable = file_prepare_directory($dir, 1);
-  if ($is_writable) {
-    foreach ($to_delete as $path) {
-      $fid = db_select('file_managed', 'f')
-        ->fields('f', array('fid'))
-        ->condition('f.uri', $path)
-        ->execute()
-        ->fetchField();
-
-      $file = file_load($fid);
-      file_delete($file);
     }
   }
 }
@@ -890,19 +866,20 @@ function user_badges_settings_form_submit($form, $form_state) {
 }
 
 /**
- * Select options for displaying a list of images in the image library.
+ * Scan the badges image directory.
  *
  * @return
- *   An array of images from the image library, in the form $filename => $image_html
+ *  An array of images from the image library, in the form
+ *  $filepath => object('image' => $image_html, 'file' => $file_unmanaged)
  */
-function user_badges_image_selects() {
+function _user_badges_images_from_library() {
   $selects = array();
 
   $path = 'public://badges';
   file_prepare_directory($path, FILE_CREATE_DIRECTORY);
   $dir = drupal_realpath($path);
 
-  $files = file_scan_directory($dir, '/.*\.(((J|j)(p|P)(g|G))|((p|P)(n|N)(g|G))|((g|G)(i|I)(f|F)))/', array('recurse' => FALSE));
+  $files = file_scan_directory($dir, '/.*\.(jpe?g|png|gif)/i', array('recurse' => FALSE));
   foreach ($files as $file) {
     $image = image_get_info($file->uri);
     $file->filepath = $path . '/' . $file->filename;
@@ -920,7 +897,7 @@ function user_badges_image_selects() {
       $variables['height'] = $image['height'];
     }
 
-    $selects[$file->filepath] = theme($theme, $variables);
+    $selects[$file->filepath] = (object) array('image' => theme($theme, $variables), 'file' => $file);
   }
 
   return $selects;
@@ -955,10 +932,7 @@ function user_badges_get_term_from_vid($vid) {
  */
 function user_badges_delete_form($form, $form_state, $badge) {
   $form = array();
-  $form['badge'] = array('#type' => 'value', '#value' => $badge);
-
-  $form['badge_img'] = array('#value' => theme('user_badge_group', array('badgeimages' => array(theme('user_badge', array('badge' => $badge))))));
-
+  $form['bid'] = array('#type' => 'value', '#value' => $badge->bid);
   return confirm_form($form, t('Are you sure you want to delete the badge %name?', array('%name' => $badge->name)), BASE_ADMIN_PATH);
 }
 
@@ -966,16 +940,20 @@ function user_badges_delete_form($form, $form_state, $badge) {
  * Submit handler for user badge deletion.
  */
 function user_badges_delete_form_submit($form, &$form_state) {
-  $badge = $form_state['values']['badge'];
-  $bid = $badge->bid;
-  $name = $badge->name;
+  $bid = $form_state['values']['bid'];
+  $badge = user_badge_load($bid);
 
   // Let other modules know about this.
   module_invoke_all('user_badges_delete', $badge);
 
-  if (is_numeric($badge->image)) {
+  if (file_valid_uri($badge->image)) {
     // Also delete file usage.
-    $file = file_load($badge->image);
+    $fid = db_select('file_managed', 'f')
+      ->fields('f', array('fid'))
+      ->condition('f.uri', $badge->image)
+      ->execute()
+      ->fetchField();
+    $file = file_load($fid);
     file_usage_delete($file, 'user_badges', 'user_badge', $badge->bid);
   }
 
