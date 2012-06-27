@@ -582,7 +582,7 @@ function user_badges_badge_autocomplete($string = '') {
     $trimstring = trim($searchstring[0]);
 
     $result = db_select('user_badges_badges', 'ubb')
-      ->fields('ubb', array('bid', 'name'))
+      ->fields('ubb')
       ->condition('name', '%' . db_like($trimstring) . '%', 'LIKE')
       ->orderBy('weight')
       ->orderBy('name')
