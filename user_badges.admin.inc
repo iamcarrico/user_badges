@@ -935,19 +935,21 @@ function user_badges_image_selects() {
  *   Array whose key is the tid and value the term's name.
  */
 function user_badges_get_term_from_vid($vid) {
-    $query = db_select('taxonomy_term_data', 't');
-    $query->join('taxonomy_term_hierarchy', 'h', 'h.tid = t.tid');
-    $query->fields('t', array('tid', 'name'));
-    $query->condition('t.vid', $vid, '=');
-    $query->condition('h.parent', 0, '='); // remove this line to get all terms.
-    $result = $query->execute();
+  $query = db_select('taxonomy_term_data', 't');
+  $query->join('taxonomy_term_hierarchy', 'h', 'h.tid = t.tid');
+  $query->fields('t', array('tid', 'name'));
+  $query->condition('t.vid', $vid, '=');
+  $query->condition('h.parent', 0, '='); // remove this line to get all terms.
+  $result = $query->execute();
 
-    $data = array();
-    while ($record = $result->fetchAssoc()) {
-        $data[$record['tid']] = t($record['name']);
-    }
+  $data = array();
+  while ($record = $result->fetchAssoc()) {
+    $data[$record['tid']] = t($record['name']);
+  }
 
-    return $data;
+  return $data;
+}
+
 /**
  * User badge deletion form.
  */
