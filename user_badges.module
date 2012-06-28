@@ -312,7 +312,7 @@ function user_badges_user_insert(&$edit, $account, $category) {
  * Implements hook_user_presave().
  */
 function user_badges_user_presave(&$edit, $account, $category) {
-  if (is_array($edit['roles'])) {
+  if (!empty($edit['roles'])) {
     // Badges only get assigned or removed when a user's role assignments are changed.
 
     // Add authenticated users (code below only cares about array keys) to prevent badge deletion
@@ -328,7 +328,7 @@ function user_badges_user_presave(&$edit, $account, $category) {
     $added = array_diff(array_keys($new_roles), array_keys((array) $account->roles));
     foreach ($added as $rid) {
       // if this role has a badge
-      if (key_exists($rid, $roles) && !key_exists($roles[$rid], $account->badges_all)) {
+      if (array_key_exists($rid, $roles) && !array_key_exists($roles[$rid], $account->badges_all)) {
         $success = user_badges_user_add_badge($account->uid, $roles[$rid], 'role');
         if ($success && $message) {
           drupal_set_message(t('User assigned %name badge.', array('%name' => $badges[$roles[$rid]])));
@@ -340,8 +340,8 @@ function user_badges_user_presave(&$edit, $account, $category) {
     $removed = array_diff(array_keys((array) $account->roles), array_keys($new_roles));
     foreach ($removed as $rid) {
       // If this role has a badge and user has this badge..
-      if (key_exists($rid, $roles) && key_exists($roles[$rid], $account->badges_all)) {
-        $success = user_badges_user_remove_badge($account->uid, $roles[$rid], 'role');
+      if (array_key_exists($rid, $roles) && array_key_exists($roles[$rid], $account->badges_all)) {
+        user_badges_user_remove_badge($account->uid, $roles[$rid], 'role');
         drupal_set_message(t('%name badge removed from user.', array('%name' => $badges[$roles[$rid]])));
       }
     }
