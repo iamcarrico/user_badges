@@ -312,7 +312,7 @@ function user_badges_user_insert(&$edit, $account, $category) {
  * Implements hook_user_presave().
  */
 function user_badges_user_presave(&$edit, $account, $category) {
-  if (!empty($edit['roles'])) {
+  if (!empty($edit['roles']) && !empty($account->uid)) {
     // Badges only get assigned or removed when a user's role assignments are changed.
 
     // Add authenticated users (code below only cares about array keys) to prevent badge deletion
