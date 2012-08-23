@@ -1316,6 +1316,12 @@ function user_badges_block_view($delta = 0) {
       $arg2 = arg(2);
       if (arg(0) == 'node' && is_numeric(arg(1)) && empty($arg2)) {
         $node = menu_get_object();
+        // Make sure we actually got a node.
+        if (!$node || !is_object($node)) {
+          watchdog('user_badges', 'Block failed to get proper node, got: @type.', array('@type' => gettype($node)), WATCHDOG_WARNING);
+          break;
+        }
+
         if (in_array($node->type, variable_get('user_badges_current_node_types', array()))) {
           $account = user_load($node->uid);
           $result = isset($account->badges) ? $account->badges : array();
