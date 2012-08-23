@@ -986,7 +986,7 @@ function user_badges_get_badges($uid, $options = array()) {
       if ($limit != 0 || $badge->unhideable == 1) {
         if ($uid == 'select') {
           $badges[$uid][$badge->bid] = $badge->name;
-          $badges[$badge->bid]['#attributes'] = array('class' => "badge badge-$badge->bid " . drupal_html_class($badge->name));
+          $badges[$badge->bid]['#attributes'] = array('class' => array("badge badge-$badge->bid " . drupal_html_class($badge->name)));
         }
         else {
           $badges[$uid][$badge->bid] = $badge;
@@ -1234,7 +1234,7 @@ function _user_badges_build_image($badge) {
     'path' => $badge->image,
     'alt' => $alt,
     'title' => $alt,
-    'attributes' => array('class' => $badge->class),
+    'attributes' => array('class' => array($badge->class)),
   );
   $theme = $style_name ? 'image_style' : 'image';
   $image = theme($theme, $variables);
