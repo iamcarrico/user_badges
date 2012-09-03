@@ -4,3 +4,6 @@ core = 7.x
 package = User interface
 dependencies[] = image
 configure = 'admin/people/user_badges/settings'
+files[] = includes/views/views_handler_field_user_badges_badges_badge.inc
+files[] = includes/views/views_handler_field_user_badges_user_uid.inc
+files[] = includes/views/views_handler_field_user_badges_user_type.inc

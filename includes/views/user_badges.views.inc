@@ -10,25 +10,6 @@
  */
 
 /**
- * Implements hook_views_handlers().
- */
-function user_badges_views_handlers() {
-  return array(
-    'handlers' => array(
-      'views_handler_field_user_badges_badges_badge' => array(
-        'parent' => 'views_handler_field',
-      ),
-      'views_handler_field_user_badges_user_uid' => array(
-        'parent' => 'views_handler_field',
-      ),
-      'views_handler_filter_user_badges_user_type' => array(
-        'parent' => 'views_handler_filter_in_operator',
-      ),
-    ),
-  );
-}
-
-/**
  * Implements hook_views_data().
  */
 function user_badges_views_data() {
@@ -36,7 +17,7 @@ function user_badges_views_data() {
 
   // Define the base group of this table. Fields that don't
   // have a group defined will go into this field by default.
-  $data['user_badges_user']['table']['group']  = t('User Badges');
+  $data['user_badges_user']['table']['group'] = t('User Badges');
 
   // How to join this table to the users table
   $data['user_badges_user']['table']['join']['users'] = array(
@@ -58,7 +39,7 @@ function user_badges_views_data() {
   );
 
   // Describe the user_badges_badges table.
-  $data['user_badges_badges']['table']['group']  = t('User Badges');
+  $data['user_badges_badges']['table']['group'] = t('User Badges');
 
   //We always the user_badges_badges table on to the user_badges_user table
   $user_badges_badges_join_info = array(

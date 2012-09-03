@@ -27,6 +27,7 @@ class views_handler_field_user_badges_badges_badge extends views_handler_field {
   //Render the badge HTML
   function render($values) {
     //create the badge object
+    $badge = new stdClass();
     $badge->bid = $values->{$this->field_alias};
     $badge->name = $values->{$this->aliases['name']};
     $badge->image = $values->{$this->aliases['image']};
@@ -36,6 +37,4 @@ class views_handler_field_user_badges_badges_badge extends views_handler_field {
     //Send it through the standard theme and return it
     return theme('user_badge', array('badge' => $badge));
   }
-
-
 }

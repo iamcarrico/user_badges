@@ -36,15 +36,14 @@ class views_handler_field_user_badges_user_uid extends views_handler_field {
           }
         }
 
-        return implode($this->options['seperator'], $badges);
+        return implode($this->options['separator'], $badges);
 
-        //Send the array of badge objects to the custom theme function
+      //Send the array of badge objects to the custom theme function
       case 'custom_theme':
         $user_badges = user_badges_get_badges($uid);
-        // TODO Please change this theme call to use an associative array for the $variables parameter.
-        return theme($this->options['theme'], $user_badges);
+        return theme($this->options['theme'], array('badges' => $user_badges));
 
-        //This case is for everything else. It returns the normal themed badges.
+      //This case is for everything else. It returns the normal themed badges.
       default:
         return user_badges_for_uid($uid);
     }
@@ -54,7 +53,7 @@ class views_handler_field_user_badges_user_uid extends views_handler_field {
   function option_definition() {
     $options = parent::option_definition();
     $options['appearance'] = 'badges';
-    $options['seperator'] = ' ';
+    $options['separator'] = ' ';
     $options['theme'] = '';
     return $options;
   }
@@ -77,14 +76,22 @@ class views_handler_field_user_badges_user_uid extends views_handler_field {
       '#weight' => -3,
     );
 
-    $form['seperator'] = array(
-      '#title' => t('Text Seperator'),
-      '#description' => t('If you select text formats above, this is the string that will go between each badge name.'),
+    $form['separator'] = array(
+      '#title' => t('Text separator'),
+      '#description' => t('The string that will go between each badge name.'),
       '#type' => 'textfield',
-      '#default_value' => $this->options['seperator'],
+      '#default_value' => $this->options['separator'],
       '#size' => 6,
       '#maxlength' => 128,
       '#weight' => -2,
+      /*'#states' => array(
+        'visible' => array(
+          ':input[name="appearance"]' => array('value' => 'linked_text'),
+        ),
+        'visible' => array(
+          ':input[name="appearance"]' => array('value' => 'unlinked_text'),
+        ),
+      ),*/
     );
 
     $form['theme'] = array(
@@ -95,6 +102,5 @@ class views_handler_field_user_badges_user_uid extends views_handler_field {
       '#maxlength' => 128,
       '#weight' => -1,
     );
-
   }
 }

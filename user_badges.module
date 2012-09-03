@@ -283,86 +283,6 @@ function user_badges_user_load($users) {
 }
 
 /**
- * Implements hook_user_insert().
- */
-function user_badges_user_insert(&$edit, $account, $category) {
-  if (is_array($account->roles)) {
-    // Get the list of role badges.
-    $roles = user_badges_get_roles();
-    $badges = user_badges_get_badges('select');
-    $message = user_access('manage badges');
-    $rids = array_keys($account->roles);
-    foreach ($rids as $rid) {
-      // If this role has a badge...
-      if (key_exists($rid, $roles)) {
-        // and user doesn't already have this badge.
-        if (!key_exists($roles[$rid], $account->badges)) {
-     // @TODO: Stop this nonsense and user role badges separately.
-          $success = user_badges_user_add_badge($account->uid, $roles[$rid], 'role');
-          if ($success && $message) {
-            drupal_set_message(t('User assigned %name badge.', array('%name' => $badges[$roles[$rid]])));
-          }
-        }
-      }
-    }
-  }
-}
-
-/**
- * Implements hook_user_presave().
- */
-function user_badges_user_presave(&$edit, $account, $category) {
-  if (!empty($edit['roles']) && !empty($account->uid)) {
-    // Badges only get assigned or removed when a user's role assignments are changed.
-
-    // Add authenticated users (code below only cares about array keys) to prevent badge deletion
-    $new_roles = $edit['roles'];
-    $new_roles[2] = 2;
-    // Get the list of role badges.
-    $roles = user_badges_get_roles();
-    $badges = user_badges_get_badges('select');
-
-    $message = user_access('manage badges');
-
-    // What are the added roles?
-    $added = array_diff(array_keys($new_roles), array_keys((array) $account->roles));
-    foreach ($added as $rid) {
-      // if this role has a badge
-      if (array_key_exists($rid, $roles) && !array_key_exists($roles[$rid], $account->badges_all)) {
-        $success = user_badges_user_add_badge($account->uid, $roles[$rid], 'role');
-        if ($success && $message) {
-          drupal_set_message(t('User assigned %name badge.', array('%name' => $badges[$roles[$rid]])));
-        }
-      }
-    }
-
-    // What are the removed roles?
-    $removed = array_diff(array_keys((array) $account->roles), array_keys($new_roles));
-    foreach ($removed as $rid) {
-      // If this role has a badge and user has this badge..
-      if (array_key_exists($rid, $roles) && array_key_exists($roles[$rid], $account->badges_all)) {
-        user_badges_user_remove_badge($account->uid, $roles[$rid], 'role');
-        drupal_set_message(t('%name badge removed from user.', array('%name' => $badges[$roles[$rid]])));
-      }
-    }
-
-    //As we may have altered the badges, we need to refresh them in the $account object
-    $account->badges = user_badges_get_badges($account->uid);
-    $account->badges_all = user_badges_get_badges($account->uid, array('nolimit' => TRUE));
-  }
-}
-
-/**
- * Implements hook_user_cancel().
- */
-// @TODO: hook_user_delete - let them keep the badges until then.
-function user_badges_user_cancel($edit, $account, $method) {
-  db_delete('user_badges_user')
-    ->condition('uid', $account->uid)
-    ->execute();
-}
-
-/**
  * Implements hook_user_view().
  */
 function user_badges_user_view($account, $view_mode) {
@@ -1281,7 +1201,8 @@ function theme_user_badge($variables) {
  */
 function user_badges_views_api() {
   return array(
-    'api' => 2.0,
+    'api' => 3,
+    'path' => drupal_get_path('module', 'user_badges') . '/includes/views',
   );
 }
 
