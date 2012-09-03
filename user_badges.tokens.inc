@@ -46,17 +46,17 @@ function user_badges_token_info() {
     'name' => t('User Badges'),
     'description' => t('Tokens related to user badges.'),
     'needs-data' => 'userbadge',
-    );
+  );
 
   $userbadge['userbadge-name'] = array(
     'name' => t('Badge Name'),
     'description' => t('The badge name.'),
-    );
+  );
 
   $userbadge['userbadge-bid'] = array(
     'name' => t('Badge ID'),
     'description' => t('The badge id number (bid).'),
-    );
+  );
 
   return array(
     'types' => array('userbadge' => $type),

@@ -14,9 +14,9 @@ function user_badges_cron() {
   $results = db_query('SELECT * FROM {user_badges_roles}');
 
   $roles = array();
-  foreach($results as $result) {
+  foreach ($results as $result) {
     $roles[$result->rid] = $result->bid;
   }
 
-  user_badges_save_roles($roles);   // Yuck!
+  user_badges_save_roles($roles); // Yuck!
 }

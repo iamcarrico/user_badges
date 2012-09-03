@@ -17,9 +17,9 @@
 /**
  * Constants.
  */
-define('BASE_ADMIN_PATH', 'admin/config/people/user_badges');
+define('USER_BADGES_ADMIN_PATH', 'admin/config/people/user_badges');
 
-define('EDIT_DELETE_ARG_POSITION', 5);
+define('USER_BADGES_ARG_POSITION', 5);
 
 /**
  * Implements hook_init().
@@ -43,7 +43,7 @@ function user_badges_help($path, $arg) {
   global $user;
   switch ($path) {
     case 'admin/modules#description':
-    case BASE_ADMIN_PATH:
+    case USER_BADGES_ADMIN_PATH:
       return t('User badges are iconic images which can be assigned to users. They can represent accomplishments, status, or anything you\'d like. These badges will show up in the user\'s profile, and could also be used by a theme to appear with user postings on forums, comments, or nodes. Badges can be assigned manually by an administrator by visiting a user\'s profile. They also can be assigned automatically by role or ecommerce purchase (if ecommerce modules are installed). The excellent !link module can also be used to automatically set and unset badges on a wide variety of conditions.', array('!link' => l('Rules', 'http://drupal.org/project/rules', array('absolute' => TRUE))));
 
     case 'admin/people/user_badges/roles':
@@ -55,7 +55,7 @@ function user_badges_help($path, $arg) {
     case 'user/%/badges':
     case 'user/%/badges/list':
       $showone = variable_get('user_badges_showone', 0);
-      if (variable_get('user_badges_userweight', 0) && ($user->uid == $arg[1] || user_access('change badge assignments')) ) {
+      if (variable_get('user_badges_userweight', 0) && ($user->uid == $arg[1] || user_access('change badge assignments'))) {
         // Help messages for users who can reorder.
         if ($showone) {
           return t("You can reorder badges here. Only the top !number badges will be shown publicly.", array('!number' => ($showone == 0 ? t('unlimited') : (int) $showone)));
@@ -79,24 +79,24 @@ function user_badges_permission() {
     'access user badges' => array(
       'title' => t('Access user badges'),
       'description' => t('Display user badges to the user.'),
-      ),
+    ),
     'manage badges' => array(
       'title' => t('Manage badges'),
       'description' => t('Access the User Badges administration pages.'),
-      ),
+    ),
     'change badge assignments' => array(
       'title' => t('Change badge assignments'),
       'description' => t('Access the "Badges" tab in user profiles.'),
-      ),
+    ),
     'change own badge assignments' => array(
       'title' => t('Change own badge assignments'),
       'description' => t('Access the "Badges" tab in their own user profile.'),
-      ),
+    ),
     'suppress badges in user profile' => array(
       'title' => t("Don't show badges in user profile"),
       'description' => t("Don't show badges when viewing a user profile."),
-      ),
-    );
+    ),
+  );
 }
 
 /**
@@ -105,7 +105,7 @@ function user_badges_permission() {
 function user_badges_menu() {
   $items = array();
 
-  $items[BASE_ADMIN_PATH] = array(
+  $items[USER_BADGES_ADMIN_PATH] = array(
     'title' => 'Badges',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('user_badges_badgelist_form'),
@@ -113,7 +113,7 @@ function user_badges_menu() {
     'file' => 'user_badges.admin.inc',
   );
 
-  $items[BASE_ADMIN_PATH . '/list'] = array(
+  $items[USER_BADGES_ADMIN_PATH . '/list'] = array(
     'title' => 'List',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('user_badges_badgelist_form'),
@@ -123,7 +123,7 @@ function user_badges_menu() {
     'file' => 'user_badges.admin.inc',
   );
 
-  $items[BASE_ADMIN_PATH . '/add'] = array(
+  $items[USER_BADGES_ADMIN_PATH . '/add'] = array(
     'title' => 'Add new badge',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('user_badges_edit_form'),
@@ -132,7 +132,7 @@ function user_badges_menu() {
     'file' => 'user_badges.admin.inc',
   );
 
-  $items[BASE_ADMIN_PATH . '/images'] = array(
+  $items[USER_BADGES_ADMIN_PATH . '/images'] = array(
     'title' => 'Images',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('user_badges_images_form'),
@@ -141,7 +141,7 @@ function user_badges_menu() {
     'file' => 'user_badges.admin.inc',
   );
 
-  $items[BASE_ADMIN_PATH . '/roles'] = array(
+  $items[USER_BADGES_ADMIN_PATH . '/roles'] = array(
     'title' => 'Roles',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('user_badges_roles_form'),
@@ -150,7 +150,7 @@ function user_badges_menu() {
     'file' => 'user_badges.admin.inc',
   );
 
-  $items[BASE_ADMIN_PATH . '/settings'] = array(
+  $items[USER_BADGES_ADMIN_PATH . '/settings'] = array(
     'title' => 'Settings',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('user_badges_settings_form'),
@@ -159,19 +159,19 @@ function user_badges_menu() {
     'file' => 'user_badges.admin.inc',
   );
 
-  $items[BASE_ADMIN_PATH . '/edit/%user_badge'] = array(
+  $items[USER_BADGES_ADMIN_PATH . '/edit/%user_badge'] = array(
     'title' => 'Edit badge',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('user_badges_edit_form', EDIT_DELETE_ARG_POSITION),
+    'page arguments' => array('user_badges_edit_form', USER_BADGES_ARG_POSITION),
     'access arguments' => array('manage badges'),
     'type' => MENU_CALLBACK + MENU_VISIBLE_IN_BREADCRUMB,
     'file' => 'user_badges.admin.inc',
   );
 
-  $items[BASE_ADMIN_PATH . '/delete/%user_badge'] = array(
+  $items[USER_BADGES_ADMIN_PATH . '/delete/%user_badge'] = array(
     'title' => 'Delete badge',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('user_badges_delete_form', EDIT_DELETE_ARG_POSITION),
+    'page arguments' => array('user_badges_delete_form', USER_BADGES_ARG_POSITION),
     'access arguments' => array('manage badges'),
     'type' => MENU_CALLBACK + MENU_VISIBLE_IN_BREADCRUMB,
     'file' => 'user_badges.admin.inc',
@@ -253,7 +253,8 @@ function user_badges_user_load($users) {
       // whether we filter the ones we show.
       // @TODO: Is this the right function to use? Certainly nolimit is wrong.
       // @TODO: This also doesn't get role badges.
-      $badges_all = user_badges_get_badges($uid, array('nolimit' => TRUE));;
+      $badges_all = user_badges_get_badges($uid, array('nolimit' => TRUE));
+      ;
       $users[$uid]->badges_all = $badges_all;
       $users[$uid]->badges_count = count($badges_all);
       $badges[$uid] = array();
@@ -296,7 +297,7 @@ function user_badges_user_view($account, $view_mode) {
     '#title' => t('Badges'),
     '#type' => 'user_profile_category',
     '#attributes' => array('class' => array('badges')),
-    );
+  );
 
   if (isset($account->badges) && count($account->badges)) {
     $badgeimgs = array();
@@ -309,7 +310,7 @@ function user_badges_user_view($account, $view_mode) {
       '#title' => '',
       '#markup' => theme('user_badge_group', array('badgeimages' => $badgeimgs)),
       '#attributes' => array('class' => array('badges')),
-      );
+    );
   }
   else {
     // They don't have any badges, so show the "no badges" message.
@@ -318,7 +319,7 @@ function user_badges_user_view($account, $view_mode) {
       '#title' => '',
       '#markup' => variable_get('user_badges_nobadges', ''),
       '#attributes' => array('class' => array('badges')),
-      );
+    );
   }
 }
 
@@ -419,10 +420,10 @@ function user_badges_userweight_form_submit($form, &$form_state) {
       // TODO Please review the conversion of this statement to the D7 database API syntax.
       /* db_query("UPDATE {user_badges_user} SET userweight = %d WHERE bid = %d AND uid = %d", $form_state['values'][$bid], $bid, $form_state['values']['uid']) */
       db_update('user_badges_user')
-  ->fields(array('userweight' => $form_state['values'][$bid]))
-  ->condition('bid', $bid)
-  ->condition('uid', $form_state['values']['uid'])
-  ->execute();
+        ->fields(array('userweight' => $form_state['values'][$bid]))
+        ->condition('bid', $bid)
+        ->condition('uid', $form_state['values']['uid'])
+        ->execute();
     }
     drupal_set_message(t('Your badge order has been updated.'));
   }
@@ -469,9 +470,9 @@ function theme_user_badges_userweight_form($variables) {
   }
   else {
     $rows[] = array(array(
-        'data' => t('No badges available.'),
-        'colspan' => '3',
-      ));
+      'data' => t('No badges available.'),
+      'colspan' => '3',
+    ));
   }
 
   // This makes the table draggable.
@@ -482,8 +483,8 @@ function theme_user_badges_userweight_form($variables) {
     array('header' => $form['header']['#value'],
       'rows' => $rows,
       'attributes' => array('id' => 'user_badges_userweight'),
-      )
-    );
+    )
+  );
 
   // Render any remaining form elements.
   $output .= drupal_render_children($form);
@@ -539,11 +540,11 @@ function user_badges_badge_autocomplete_validation($value) {
     //The format was correct, but we need to check the bid exists
     $bid = $matches[1];
     $records = db_select('user_badges_badges', 'ubb')
-      -> fields('ubb')
-      -> condition('ubb.bid', $bid)
-      -> execute();
+      ->fields('ubb')
+      ->condition('ubb.bid', $bid)
+      ->execute();
 
-    if ($records -> rowCount() > 0) {
+    if ($records->rowCount() > 0) {
       //Result found
       return array($bid, 'valid');
     }
@@ -596,8 +597,7 @@ function user_badges_userweight_page($account) {
       if ($whoelse) {
         $query = db_select('user_badges_user', 'ubu')
           ->condition('ubu.bid', $badge->bid, '=')
-          ->condition('ubu.uid', $account->uid, '<>')
-          ;
+          ->condition('ubu.uid', $account->uid, '<>');
         $u = $query->join('users', 'u', 'u.uid=ubu.uid');
         $query->fields($u);
         $result = $query->execute();
@@ -731,10 +731,10 @@ function user_badges_change_form_submit($form, &$form_state) {
   }
 
   if (arg(2) == 'edit') {
-    $form_state['redirect'] = "user/$uid";  // My account.
+    $form_state['redirect'] = "user/$uid"; // My account.
   }
   else {
-    $form_state['redirect'] = "user/$uid/badges";  // Full admin UI.
+    $form_state['redirect'] = "user/$uid/badges"; // Full admin UI.
   }
 }
 
@@ -800,12 +800,12 @@ function user_badges_user_add_badge($uid, $bid, $type = NULL) {
   // TODO Please review the conversion of this statement to the D7 database API syntax.
   /* db_query('INSERT INTO {user_badges_user} (uid, bid, type) VALUES (%d, %d, \'%s\')', $uid, $bid, $type) */
   return $id = db_insert('user_badges_user')
-  ->fields(array(
+    ->fields(array(
     'uid' => $uid,
     'bid' => $bid,
     'type' => $type,
   ))
-  ->execute();
+    ->execute();
 }
 
 
@@ -858,7 +858,7 @@ function user_badges_get_badges($uid, $options = array()) {
   // Do this so we don't return NULL.
   $badges[$uid] = array();
 
-  if (empty($past_uid) || $past_uid !== $uid || $past_options !== $options ) {
+  if (empty($past_uid) || $past_uid !== $uid || $past_options !== $options) {
     $past_uid = $uid;
     if ($uid == 'all' || $uid == 'select') {
       $sql = db_query('SELECT b.bid, b.weight, b.name, b.image, b.href,
@@ -1046,10 +1046,10 @@ function user_badges_save_roles($roles) {
 
 /**
  * Returns HTML representation of user badges for given uid
- *   @param $uid the user id
- *   @param $refresh (FALSE) when TRUE, refreshes the cache for $uid
+ * @param $uid the user id
+ * @param $refresh (FALSE) when TRUE, refreshes the cache for $uid
  *
- *   @return string html representation of userbadges
+ * @return string html representation of userbadges
  */
 function user_badges_for_uid($uid, $refresh = FALSE) {
   static $cache;
@@ -1214,16 +1214,16 @@ function user_badges_block_info() {
     'current_node' => array(
       'info' => t('User_Badges: Content Author'),
       'cache' => DRUPAL_NO_CACHE,
-      ),
+    ),
     'my_badges' => array(
       'info' => t('User_Badges: My Badges'),
       'cache' => DRUPAL_CACHE_PER_USER,
-      ),
+    ),
     'all_badges' => array(
       'info' => t('User_Badges: All Badges'),
       'cache' => DRUPAL_CACHE_GLOBAL,
-      ),
-    );
+    ),
+  );
 }
 
 /**
@@ -1309,7 +1309,7 @@ function user_badges_block_configure($delta = 0) {
         '#default_value' => variable_get('user_badges_current_node_types', array()),
         '#options' => node_type_get_names(),
         '#attributes' => array('class' => array('container-inline')),
-        );
+      );
       break;
 
     case 'my_badges':
@@ -1322,8 +1322,8 @@ function user_badges_block_configure($delta = 0) {
         '#attributes' => array('class' => array('container-inline')),
         '#description' => t('The current badge display limit is @limit.',
           array('@limit' => ($showone == 0 ? t('unlimited') : $showone))
-          ),
-        );
+        ),
+      );
       break;
   }
 

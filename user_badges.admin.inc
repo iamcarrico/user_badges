@@ -26,7 +26,7 @@ function user_badges_badgelist_form($form, &$form_state) {
     'badge' => array('data' => t('Badge')),
     'weight' => array('data' => t('Weight'), 'field' => 'weight'),
     'options' => array('data' => t('Options')),
-    );
+  );
 
   if ($show_users) {
     $header['users'] = array('data' => t('Assigned to'));
@@ -42,7 +42,7 @@ function user_badges_badgelist_form($form, &$form_state) {
   else {
     $header['name']['sort'] = 'asc';
   }
-  
+
   $form['#header'] = $header;
 
   $result = db_select('user_badges_badges', 'ubb')
@@ -101,9 +101,9 @@ function user_badges_badgelist_form($form, &$form_state) {
       $form['users'][$badge->bid] = array('#value' => theme('item_list', array('items' => $u_list)));
     }
 
-    $form['edit'][$badge->bid] = array('#value' => l(t('edit'),  BASE_ADMIN_PATH . '/edit/' . $badge->bid));
+    $form['edit'][$badge->bid] = array('#value' => l(t('edit'), USER_BADGES_ADMIN_PATH . '/edit/' . $badge->bid));
 
-    $form['delete'][$badge->bid] = array('#value' => l(t('delete'), BASE_ADMIN_PATH . '/delete/' . $badge->bid));
+    $form['delete'][$badge->bid] = array('#value' => l(t('delete'), USER_BADGES_ADMIN_PATH . '/delete/' . $badge->bid));
   }
 
   $form['submit'] = array(
@@ -191,9 +191,9 @@ function theme_user_badges_badgelist_form($variables) {
   }
   else {
     $rows[] = array(array(
-        'data' => t('No badges available.'),
-        'colspan' => '5',
-      ));
+      'data' => t('No badges available.'),
+      'colspan' => '5',
+    ));
   }
 
   // Theme all that we have processed so far into a table.
@@ -525,7 +525,7 @@ function user_badges_edit_form_submit($form, &$form_state) {
     drupal_set_message(t('There was a problem saving the badge information into the database.'));
   }
 
-  $form_state['redirect'] = BASE_ADMIN_PATH;
+  $form_state['redirect'] = USER_BADGES_ADMIN_PATH;
 }
 
 /**
@@ -714,7 +714,7 @@ function user_badges_settings_form($form, &$form_state) {
     '#description' => t('Only this many badges with the lightest weights will be shown.')
       . t('Set to zero to apply no limit.')
       . t('Note that if multiple badges have the same lightest weight, only one of them will appear (first by alphabetical order).'),
-    );
+  );
 
   $form['showblocked'] = array(
     '#type' => 'radios',
@@ -725,7 +725,7 @@ function user_badges_settings_form($form, &$form_state) {
       t('Note that if there is no badge associated to blocked users, no badges will appear.') . ' ' .
       t('This option only acts on blocked users and has no repercussions on active user badges.'),
     '#attributes' => array('class' => array('container-inline')),
-    );
+  );
 
   $form['userweight'] = array(
     '#type' => 'radios',
@@ -735,7 +735,7 @@ function user_badges_settings_form($form, &$form_state) {
     '#description' => t('If checked, users will have the ability to reweight their badges in their profile, enabling them to set what order their badges display, and also which badges will display if a limit is set above.') . ' ' .
       t('Note that you can make individual badges exempt from this function, allowing you to force them to the top or bottom of the list by giving them a very high or low weight value.'),
     '#attributes' => array('class' => array('container-inline')),
-    );
+  );
 
   $form['show_users'] = array(
     '#type' => 'radios',
@@ -744,7 +744,7 @@ function user_badges_settings_form($form, &$form_state) {
     '#default_value' => variable_get('user_badges_list_show_users', 0),
     '#description' => t('If selected, the user badges list will include all of the users who have been assigned the badge.'),
     '#attributes' => array('class' => array('container-inline')),
-    );
+  );
 
   $form['imagecache'] = array(
     '#type' => 'select',
@@ -753,7 +753,7 @@ function user_badges_settings_form($form, &$form_state) {
     '#default_value' => variable_get('user_badges_imagecache', ''),
     '#description' => t('This determines the size of the image display.'),
     '#attributes' => array('class' => array('container-inline')),
-    );
+  );
 
   $form['nobadges'] = array(
     '#type' => 'textfield',
@@ -762,7 +762,7 @@ function user_badges_settings_form($form, &$form_state) {
     '#maxlength' => 500,
     '#default_value' => variable_get('user_badges_nobadges', ''),
     '#description' => t('This provides this message if the user has no badges, rather than nothing. Leave it blank for no message.'),
-    );
+  );
 
   $form['defaulthref'] = array(
     '#type' => 'textfield',
@@ -771,7 +771,7 @@ function user_badges_settings_form($form, &$form_state) {
     '#maxlength' => 500,
     '#default_value' => variable_get('user_badges_defaulthref', ''),
     '#description' => t('Enter a default URL to link all badges to. You can override this for individual badges.'),
-    );
+  );
 
   // Tokens help.
   if (module_exists('token')) {
@@ -781,18 +781,18 @@ function user_badges_settings_form($form, &$form_state) {
       '#type' => 'fieldset',
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
-      );
+    );
 
     $form['token_help']['help'] = array(
       '#theme' => 'token_tree',
       '#token_types' => array('userbadge', 'user'),
-      );
+    );
   }
   else {
     $form['token_help']['help'] = array(
       // Ignore Coder flag on link.
-      '#value' => t('Install the <a href="!link">Token</a> module if you want this URL to include dynamic elements such as badge ID numbers.', array('!link' => url( 'http://drupal.org/project/token', array('absolute' => TRUE)))),
-      );
+      '#value' => t('Install the <a href="!link">Token</a> module if you want this URL to include dynamic elements such as badge ID numbers.', array('!link' => url('http://drupal.org/project/token', array('absolute' => TRUE)))),
+    );
   }
 
   // Let the user select a vocabulary to associate with badges.
@@ -811,14 +811,14 @@ function user_badges_settings_form($form, &$form_state) {
       '#options' => $selects,
       '#description' => t('Optional. Select a vocabulary to associate badges with. You can optionally associate each badge with one term in this vocabulary.'),
       '#attributes' => array('class' => array('container-inline')),
-      );
+    );
   }
 
   $form[] = array(
     '#type' => 'submit',
     '#value' => t('Save configuration'),
     '#weight' => 100,
-    );
+  );
   return $form;
 }
 
@@ -827,7 +827,7 @@ function user_badges_settings_form($form, &$form_state) {
  */
 function user_badges_settings_form_validate($form, $form_state) {
   // 'showone' must be numeric.
-  if (!is_numeric($form_state['values']['showone']) || $form_state['values']['showone'] < 0 ) {
+  if (!is_numeric($form_state['values']['showone']) || $form_state['values']['showone'] < 0) {
     form_set_error('showone', t('Must be a positive number.'));
   }
 }
@@ -933,7 +933,7 @@ function user_badges_get_term_from_vid($vid) {
 function user_badges_delete_form($form, $form_state, $badge) {
   $form = array();
   $form['bid'] = array('#type' => 'value', '#value' => $badge->bid);
-  return confirm_form($form, t('Are you sure you want to delete the badge %name?', array('%name' => $badge->name)), BASE_ADMIN_PATH);
+  return confirm_form($form, t('Are you sure you want to delete the badge %name?', array('%name' => $badge->name)), USER_BADGES_ADMIN_PATH);
 }
 
 /**
@@ -970,5 +970,5 @@ function user_badges_delete_form_submit($form, &$form_state) {
     ->execute();
 
   drupal_set_message(t('The @name badge has been deleted.', array('@name' => $name)));
-  $form_state['redirect'] = BASE_ADMIN_PATH;
+  $form_state['redirect'] = USER_BADGES_ADMIN_PATH;
 }
