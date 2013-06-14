@@ -158,16 +158,45 @@ function user_badges_schema() {
  * Implements hook_uninstall().
  */
 function user_badges_uninstall() {
-  $dir = 'public://badges';
-  if (file_prepare_directory($dir)) {
-    // Delete files if the directory exists.
-    $files = file_scan_directory($dir, '/.*\.(gif|jpg|jpeg|png)/', array('recurse' => FALSE));
-    foreach ($files as $file) {
-      file_delete($file->filename);
-    }
-    // Delete directory.
-    rmdir($dir);
-  }
+	$dir = 'public://badges';
+	if (file_prepare_directory($dir)) {
+		// Delete files if the directory exists.
+		// Scan directory for images.
+		$files = file_scan_directory($dir, '/.*\.(gif|jpg|jpeg|png)/', array('recurse' => FALSE));
+		foreach ($files as $file) {
+			file_delete($file->filename);
+			if (file_valid_uri($file->uri)) {
+				// Check if there's an entry in the database for this file.
+				$fid = db_select('file_managed', 'f')
+					->fields('f', array('fid'))
+					->condition('f.uri', $file->uri)
+					->execute()
+					->fetchField();
+
+				if ($fid) {
+					// Load the file object.
+					$fileob = file_load($fid);
+					if ($fileob) {
+						// Remove all usage for this file by user_badges module.
+						file_usage_delete($fileob, 'user_badges', NULL, NULL, 0);
+						// Delete if file not in use by another module.
+						file_delete($fileob);
+					}
+				}
+			}
+		}
+
+		// Delete directory if it is empty.
+		$files = scandir($dir);
+		if ($files) {
+			// scandir returns '.' and '..' in empty directory.
+			if (count($files) < 3) {
+				drupal_rmdir($dir);
+			}
+		}
+		// Delete directory.
+		rmdir($dir);
+	}
 
   // Delete variables.
   variable_del('user_badges_showone');

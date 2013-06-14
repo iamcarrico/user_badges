@@ -48,10 +48,10 @@ function user_badges_badgelist_form($form, &$form_state) {
 
   $result = db_select('user_badges_badges', 'ubb')
     ->fields('ubb')
-    ->extend('TableSort')
-    ->orderByHeader($header)
     ->extend('PagerDefault')
     ->limit(50)
+    ->extend('TableSort')
+    ->orderByHeader($header)
     ->execute();
 
   // Build a table listing the appropriate badges.
@@ -108,10 +108,11 @@ function user_badges_badgelist_form($form, &$form_state) {
   }
 
   $form['submit'] = array(
-    '#submit' => t('Update'),
+    '#type' => 'submit',
+    '#value' => t('Update')
   );
 
-  $form['pager'] = array('#value' => theme('pager', array('tags' => NULL, 'element' => 0)));
+  $form['pager'] = array('#markup' => theme('pager', array('tags' => NULL, 'element' => 0)));
 
   return $form;
 }
@@ -171,7 +172,7 @@ function theme_user_badges_badgelist_form($variables) {
       $row = array();
       $row[] = $form['name'][$key]['#value'];
       $row[] = $form['badge'][$key]['#value'];
-      $row[] = $form['weight'][$key]['#value'];
+      $row[] = drupal_render($form['weight'][$key]);
       $row[] = $form['options'][$key]['#value'];
       if (variable_get('user_badges_list_show_users', 0)) {
         $row[] = $form['users'][$key]['#value'];
@@ -201,9 +202,12 @@ function theme_user_badges_badgelist_form($variables) {
   $output .= theme('table', array('header' => $form['#header'], 'rows' => $rows));
 
   // Create the table's pager.
-  if ($form['pager']['#value']) {
+  if ($form['pager']['#markup']) {
     $output .= drupal_render($form['pager']);
   }
+  
+  //Render the rest of the form elements
+  $output .= drupal_render_children($form);
 
   return $output;
 }
@@ -393,7 +397,7 @@ function user_badges_edit_form($form, $form_state, $badge = NULL) {
   $form['options']['doesnotcounttolimit'] = array(
     '#type' => 'checkbox',
     '#title' => t('Does Not Count to Limit'),
-    '#default_value' => !empty($edit) ? $edit->doesnotcounttolimit : '',
+    '#default_value' => $badge ? $badge->doesnotcounttolimit : '',
     '#description' => t('If this is set, the badge does not count towards the limit for number of badges to display per user.'),
   );
 

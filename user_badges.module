@@ -196,30 +196,11 @@ function user_badges_menu() {
     'weight' => -10,
   );
 
-  $items['user/%user/badges/whoelse'] = array(
-    'title' => 'Who Else',
-    'page callback' => 'user_badges_userweight_page',
-    'page arguments' => array(1),
-    'access arguments' => array('change badge assignments'),
-    'type' => MENU_LOCAL_TASK,
-    'weight' => 0,
-  );
-
   $items['user/%user/badges/edit'] = array(
     'title' => 'Edit',
     'page callback' => 'user_badges_page',
     'page arguments' => array(1),
     'access arguments' => array('change badge assignments'),
-    'type' => MENU_LOCAL_TASK,
-    'weight' => 5,
-  );
-
-  // Menu item to allow a user to change their own badge assignments.
-  $items['user/%user/edit/badges'] = array(
-    'title' => 'Badges',
-    'page callback' => 'user_badges_page',
-    'page arguments' => array(1),
-    'access arguments' => array('change own badge assignments'),
     'type' => MENU_LOCAL_TASK,
     'weight' => 5,
   );
@@ -240,45 +221,35 @@ function user_badges_menu() {
  * Gets all badges for the user and the limited badges.
  */
 function user_badges_user_load($users) {
-  static $badges = array();
+  static $user_badges = array();
 
   foreach ($users as $uid => $account) {
     // Only handle authenticated users.
     if ($uid > 0) {
+
       // Have we loaded this user before?
-      if (isset($badges[$uid])) {
-        $users[$uid]->badges = $badges[$uid];
-      }
-
-      // Get all user badges for this user, regardless of
-      // whether we filter the ones we show.
-      // @TODO: Is this the right function to use? Certainly nolimit is wrong.
-      // @TODO: This also doesn't get role badges.
-      $badges_all = user_badges_get_badges($uid, array('nolimit' => TRUE));
-      ;
-      $users[$uid]->badges_all = $badges_all;
-      $users[$uid]->badges_count = count($badges_all);
-      $badges[$uid] = array();
-
-      // Display the badge if there's no limit
-      // or if the badge is unhideable
-      // or if we are within our limit.
-      if ($limit = variable_get('user_badges_showone', 0)) {
-        // Loop through all potential badges and get the ones we can show.
-        foreach ($badges_all as $bid => $badge) {
-          $badge->class = "badge  badge-$bid " . drupal_html_class($badge->name);
-          if ($limit > 0 || $badge->unhideable == 1) {
-            $badges[$uid][$bid] = $badge;
-            // Count down our limit, unless the badge doesn't count towards it.
-            if (!$badge->doesnotcounttolimit) {
-              $limit--;
-            }
-          }
-        }
-        $users[$uid]->badges = $badges[$uid];
+      if (isset($user_badges[$uid])) {
+        $users[$uid]->badges = $user_badges[$uid];
       }
       else {
-        $users[$uid]->badges = $badges_all;
+        $user_badges[$uid] = array();
+        // Get all user badges for this user, regardless of
+        // whether we filter the ones we show.
+        // @TODO: This also doesn't get role badges.
+        $badges_all = user_badges_get_badges($uid, array('nolimit' => TRUE));
+        
+        $users[$uid]->badges_all = $badges_all;
+        $users[$uid]->badges_count = count($badges_all);
+        // If there is a limit set, then, display the badges according to the limit
+        if (variable_get('user_badges_showone', 0)) {
+          $user_badges[$uid] = user_badges_get_badges($uid);
+          $users[$uid]->badges = $user_badges[$uid];
+        }
+        // Else, just display all the badges
+        else {
+          $user_badges[$uid] = $badges_all;
+          $users[$uid]->badges = $user_badges[$uid];
+        }
       }
     }
   }
@@ -323,6 +294,36 @@ function user_badges_user_view($account, $view_mode) {
     );
   }
 }
+
+
+/**
+* Implementation of hook_user_categories().
+* We will use this function to create a sub tab in the user edit page.
+*/
+function user_badges_user_categories() {
+  return array(
+    array(
+      'name' => 'badges',
+      'title' => 'Badges',
+      'weight' => 5,
+      'access callback' => 'user_access',
+      'access arguments' => array('change own badge assignments'), 
+    ),
+  );
+}
+
+
+/**
+* Implementation of hook_menu_alter().
+* We will use this function to create the callbacks for the user_badges user edit page.
+*/
+function user_badges_menu_alter(&$callbacks) {
+  $callbacks['user/%user_category/edit/badges']['page callback'] = 'user_badges_page';
+  $callbacks['user/%user_category/edit/badges']['module'] = 'user_badges';
+  $callbacks['user/%user_category/edit/badges']['page arguments'] = array(1);  
+  $callbacks['user/%user_category/edit/badges']['file'] = 'user_badges.module';
+}
+
 
 /**
  * Implements hook_theme().
@@ -418,8 +419,6 @@ function user_badges_userweight_form($form, $form_state, $account) {
 function user_badges_userweight_form_submit($form, &$form_state) {
   if (isset($form['weight']) && is_array($form['weight'])) {
     foreach (element_children($form['weight']) as $bid) {
-      // TODO Please review the conversion of this statement to the D7 database API syntax.
-      /* db_query("UPDATE {user_badges_user} SET userweight = %d WHERE bid = %d AND uid = %d", $form_state['values'][$bid], $bid, $form_state['values']['uid']) */
       db_update('user_badges_user')
         ->fields(array('userweight' => $form_state['values'][$bid]))
         ->condition('bid', $bid)
@@ -798,8 +797,6 @@ function user_badges_user_save($edit, $uid, $quiet = TRUE) {
  */
 function user_badges_user_add_badge($uid, $bid, $type = NULL) {
   user_badges_user_remove_badge($uid, $bid, $type);
-  // TODO Please review the conversion of this statement to the D7 database API syntax.
-  /* db_query('INSERT INTO {user_badges_user} (uid, bid, type) VALUES (%d, %d, \'%s\')', $uid, $bid, $type) */
   return $id = db_insert('user_badges_user')
     ->fields(array(
     'uid' => $uid,
@@ -847,19 +844,25 @@ function user_badges_user_remove_badge($uid, $bid, $type = NULL) {
  *   returned values for 'select' are just badge names.
  */
 function user_badges_get_badges($uid, $options = array()) {
-  static $badges = array(), $past_uid, $past_options;
+  static $badges = array(), $past_uid;
 
   $defaults = array('nolimit' => FALSE);
   $options = array_merge($defaults, $options);
 
-  if (isset($badges[$uid])) {
-    return $badges[$uid];
+  // Sort and turn $options into a string, so that we can check if the same options are in the cache, and if so, just return that
+  ksort($options);
+  $stringified_options = json_encode($options);
+
+  // If the uid with the same options are already set, then, just return that
+  if (isset($badges[$uid][$stringified_options])) {
+    return $badges[$uid][$stringified_options];
   }
 
-  // Do this so we don't return NULL.
-  $badges[$uid] = array();
+  if (empty($past_uid) || $past_uid !== $uid || !isset($badges[$uid][$stringified_options])) {
 
-  if (empty($past_uid) || $past_uid !== $uid || $past_options !== $options) {
+    // Do this so we don't return NULL.
+    $badges[$uid][$stringified_options] = array();
+
     $past_uid = $uid;
     if ($uid == 'all' || $uid == 'select') {
       $sql = db_query('SELECT b.bid, b.weight, b.name, b.image, b.href,
@@ -871,31 +874,31 @@ function user_badges_get_badges($uid, $options = array()) {
       $usr = db_query('SELECT COUNT(uid) FROM {users} WHERE uid = :uid AND status = :status', array(':uid' => $uid, ':status' => 0))->fetchField();
 
       if ($usr && variable_get('user_badges_showblocked', 0)) {
-        $sql = db_query('SELECT DISTINCT b.bid, b.weight, b.name, b.image, b.href,
-          b.unhideable, b.fixedweight, b.doesnotcounttolimit, u.userweight, b.tid,
+        $sql = db_query('SELECT DISTINCT b.bid, u.uid, b.weight, b.name, b.image, b.href,
+          b.unhideable, b.fixedweight, b.doesnotcounttolimit, u.userweight, b.tid, r.rid
           CASE WHEN b.fixedweight = 1 THEN b.weight ELSE COALESCE(u.userweight,b.weight) END coalescedweight
           FROM {user_badges_badges} b
             INNER JOIN {user_badges_user} u ON b.bid = u.bid
-            INNER JOIN {user_badges_roles} r ON b.bid = r.bid
+            LEFT JOIN {user_badges_roles} r ON b.bid = r.bid
           WHERE u.uid = :uid AND r.rid = :rid
           ORDER BY coalescedweight, b.name', array(':uid' => $uid, ':rid' => 0));
       }
       else {
-        $sql = db_query('SELECT DISTINCT b.bid, b.weight, b.name, b.image, b.href,
-          b.unhideable, b.fixedweight, b.doesnotcounttolimit, u.userweight, b.tid,
+        $sql = db_query('SELECT DISTINCT b.bid, u.uid, b.weight, b.name, b.image, b.href,
+          b.unhideable, b.fixedweight, b.doesnotcounttolimit, u.userweight, b.tid, r.rid,
           CASE WHEN b.fixedweight = 1 THEN b.weight ELSE COALESCE(u.userweight,b.weight) END coalescedweight
           FROM {user_badges_badges} b
             INNER JOIN {user_badges_user} u ON b.bid = u.bid
+            LEFT JOIN {user_badges_roles} r ON b.bid = r.bid
           WHERE u.uid = :uid
           ORDER BY coalescedweight, b.name
           ', array(':uid' => $uid));
-
       }
     }
 
     // Should we limit the badges returned?
     if (!$options['nolimit'] && variable_get('user_badges_showone', 0)) {
-      $limit = variable_get('user_badges_showone', 1);
+      $limit = variable_get('user_badges_showone', 0);
     }
     else {
       // Set to -1 for no limit.
@@ -910,8 +913,8 @@ function user_badges_get_badges($uid, $options = array()) {
           $badges[$badge->bid]['#attributes'] = array('class' => array("badge badge-$badge->bid " . drupal_html_class($badge->name)));
         }
         else {
-          $badges[$uid][$badge->bid] = $badge;
-          $badges[$uid][$badge->bid]->class = "badge badge-$badge->bid " . drupal_html_class($badge->name);
+          $badges[$uid][$stringified_options][$badge->bid] = $badge;
+          $badges[$uid][$stringified_options][$badge->bid]->class = "badge badge-$badge->bid " . drupal_html_class($badge->name);
         }
         //Count down our limit, unless the badge doesn't count towards it
         if (!$badge->doesnotcounttolimit) {
@@ -921,7 +924,7 @@ function user_badges_get_badges($uid, $options = array()) {
     }
   }
 
-  return $badges[$uid];
+  return $badges[$uid][$stringified_options];
 }
 
 /**
@@ -947,17 +950,18 @@ function user_badge_load($bid) {
  *
  * @return a list of roles pt the whole badge object.
  */
-function user_badges_get_roles($rid = NULL, $options = array()) {
+function user_badges_get_roles($rids = NULL, $options = array()) {
   $roles = array();
   $options = array_merge(array('returnbadges' => FALSE), $options);
-
+  
   $query = db_select('user_badges_roles', 'ubr');
   $query->join('user_badges_badges', 'ubb', 'ubb.bid = ubr.bid');
+  
   $query->fields('ubr', array('rid'))
     ->fields('ubb');
 
-  if ($rid) {
-    $query->condition('ubr.rid', $rid);
+  if ($rids) {
+    $query->condition('ubr.rid', $rids, 'IN');
   }
 
   $records = $query->execute();
@@ -972,6 +976,35 @@ function user_badges_get_roles($rid = NULL, $options = array()) {
   }
   return $roles;
 }
+
+
+/**
+ * Save information about a particular user's roles for user_badges (in settings)
+ *
+ * @param $roles
+ *   An array in the format rid => bid for each role/badge relationship.
+ */
+function user_badges_save_roles_for_uid($uid, $roles) {
+
+  if (is_array($roles) && isset($uid)) {
+    // We have to clear out all role badges first.
+    db_query("DELETE FROM {user_badges_user} WHERE type='role' AND uid = :uid", array(':uid' => $uid));
+
+    // Now we loop through the roles and their badges, and assign them to
+    // the user accordingly.
+    foreach ($roles as $rid => $bid) {
+      if ($bid) {
+        //Insert the role for this user into the user badges user table
+        db_query("
+          INSERT INTO {user_badges_user} (uid, bid, type)
+          VALUES (:uid, :bid, 'role')", array(
+            ':uid' => $uid, ':bid' => $bid
+        ));
+      }
+    }
+  }
+}
+
 
 /**
  * Save information about roles for user_badges (in settings)
@@ -1045,6 +1078,24 @@ function user_badges_save_roles($roles) {
   }
 }
 
+
+/**
+ * Implementation of hook_user_update().
+ * Will save the roles for a particular user each time that user is updated.
+ */
+function user_badges_user_update(&$edit, $account, $category) {
+  
+  $roles = array();
+  
+  //Call the following function to get the roles for these rids
+  if (isset($account->roles) && count($account->roles)) {
+    $roles = user_badges_get_roles($account->roles);
+  }
+  //Now, call the following function to save the roles for this user
+  user_badges_save_roles_for_uid($account->uid, $roles);
+}
+
+
 /**
  * Returns HTML representation of user badges for given uid
  * @param $uid the user id
@@ -1061,15 +1112,8 @@ function user_badges_for_uid($uid, $refresh = FALSE) {
     else {
       // TODO: User can also have role badges.
       $user_badges = user_badges_get_badges($uid);
-
       $account = user_load($uid);
 
-      foreach ($account->roles as $rid => $role_name) {
-        $rb = user_badges_get_roles($rid, array('returnbadges' => TRUE));
-        foreach ($rb as $rid => $b) {
-          $user_badges[$b->bid] = $b;
-        }
-      }
       foreach ($user_badges as $badge) {
         $badges[] = theme('user_badge', array('badge' => $badge, 'account' => $account));
       }
@@ -1183,7 +1227,7 @@ function theme_user_badge($variables) {
 
     // Implement token replacement.
     if (module_exists('token')) {
-//      $href = token_replace($href, array('userbadge' => $badge, 'user' => $account));
+      $href = token_replace($href, array('userbadge' => $badge, 'user' => $account));
     }
 
     $pieces = parse_url($href);
