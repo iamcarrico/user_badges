@@ -21,15 +21,25 @@ function user_badges_tokens($type, $tokens, array $data = array(), array $option
   $replacements = array();
 
   if ($type == 'userbadge') {
-    $badge = $data;
+    $badge = $data['userbadge'];
+
     foreach ($tokens as $name => $original) {
       switch ($name) {
         case 'userbadge-name':
-          $replacements[$original] = check_plain($badge['name']);
+          $replacements[$original] = check_plain($badge->name);
           break;
 
         case 'userbadge-bid':
-          $replacements[$original] = $badge['bid'];
+          $replacements[$original] = $badge->bid;
+          break;
+        
+        case 'userbadge-uid':
+          if (isset($badge->uid)) {
+            $replacements[$original] = $badge->uid;
+          }
+          else {
+            $replacements[$original] = 'no-uid-found';
+          }
           break;
       }
     }
@@ -56,6 +66,11 @@ function user_badges_token_info() {
   $userbadge['userbadge-bid'] = array(
     'name' => t('Badge ID'),
     'description' => t('The badge id number (bid).'),
+  );
+  
+  $userbadge['userbadge-uid'] = array(
+    'name' => t('Badge UID'),
+    'description' => t('The uid of the badge owner.'),
   );
 
   return array(
