@@ -250,7 +250,7 @@ function user_badges_update_6102() {
     'type' => 'varchar',
     'length' => 255,
     'not null' => FALSE,
-    'default' => "''",
+    'default' => '',
   ));
 
   //Add the new fields for the on/off checkbox settings

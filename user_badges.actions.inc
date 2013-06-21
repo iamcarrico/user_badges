@@ -61,14 +61,14 @@ function user_badges_add_badge_action_form($context) {
   $form['badges'] = array('#tree' => TRUE);
 
   $badges = user_badges_get_badges('all');
-  $context['badges'] = is_array($context['badges']) ? $context['badges'] : array();
+  $context['badges'] = isset($context['badges']) ? $context['badges'] : array();
 
   foreach ($badges as $badge) {
     $form['badges'][$badge->bid] = array(
       '#type' => 'checkbox',
       '#title' => theme('user_badge', array('badge' => $badge)),
       '#return_value' => 1,
-      '#default_value' => $context['badges'][$badge->bid],
+      '#default_value' => (isset($context['badges'][$badge->bid])) ? $context['badges'][$badge->bid] : false,
       '#description' => check_plain($badge->name),
     );
   }

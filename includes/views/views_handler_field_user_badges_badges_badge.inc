@@ -18,12 +18,6 @@ class views_handler_field_user_badges_badges_badge extends views_handler_field {
     $this->additional_fields['weight'] = 'weight';
   }
 
-  //Add the additional fields to the query
-  function query() {
-    $this->ensure_my_table();
-    $this->add_additional_fields();
-  }
-
   //Render the badge HTML
   function render($values) {
     //create the badge object

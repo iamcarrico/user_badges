@@ -571,6 +571,7 @@ function user_badges_images_form($form, $form_state) {
  */
 function user_badges_images_form_submit($form, &$form_state) {
   $files_to_delete = array_keys(array_filter($form_state['values']['images']));
+
   if (!empty($files_to_delete)) {
     $dir = 'public://badges';
     if (file_prepare_directory($dir)) {
@@ -584,18 +585,31 @@ function user_badges_images_form_submit($form, &$form_state) {
         // If the file is managed, verify that it is not used
         if ($fid) {
           $file = file_load($fid);
+
+	  //Check to see if we are using this image for any badges
           $num_rows = db_select('user_badges_badges', 'ubb')
             ->condition('ubb.image', $path)
             ->countQuery()
             ->execute()
             ->fetchField();
-          if (!$file || $num_rows || !file_delete($file)) {
-            drupal_set_message(t('The file %file is still being used for some badges.',
-              array('%file' => $path)), 'error');
-          }
+
+            //Delete the file from file_usage table in the $num_rows is 0
+            if ($num_rows == 0) {
+              file_usage_delete($file, 'user_badges');
+            }
+            
+            //Delete the file, it will be true, if successfule, false if an error occurred, or an array if it
+            //is still being used by a module
+            $file_delete_response = file_delete($file);
+            
+            //Set a message if the file hasn't been loaded, or if it could not be deleted
+            if (!$file || !$file_delete_response || is_array($file_delete_response)) {
+              drupal_set_message(t('The file %file is still being used for some badges.',
+                array('%file' => $path)), 'error');
+            }
         }
         else {
-          // If it not managed, delete it
+          // If it is not managed, delete it
           file_unmanaged_delete($path);
         }
       }

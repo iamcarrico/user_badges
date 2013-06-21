@@ -763,7 +763,7 @@ function user_badges_user_save($edit, $uid, $quiet = TRUE) {
     $added = array_diff($newbadges, array_keys($badges));
 
     foreach ($added as $bid) {
-      if (!key_exists($bid, $badges)) {
+      if (!array_key_exists($bid, $badges)) {
         $success = (boolean) user_badges_user_add_badge($uid, $bid);
       }
     }
@@ -773,7 +773,7 @@ function user_badges_user_save($edit, $uid, $quiet = TRUE) {
 
     foreach ($removed as $bid) {
       // and user has this badge
-      if (key_exists($bid, $badges)) {
+      if (array_key_exists($bid, $badges)) {
         $success = $success && (boolean) user_badges_user_remove_badge($uid, $bid);
       }
     }
@@ -1185,13 +1185,13 @@ function theme_user_badge_group($variables) {
  */
 function _user_badges_build_image($badge) {
 	
-	//Initialize the image style
-	$style_name = '';
-	
-	//If this is not an external image, then, style it according to the image style the user selected in the settings page
-	if(strpos($badge->image, "public://") === 0) {
-		$style_name = variable_get('user_badges_imagecache', '');
-	}
+  //Initialize the image style
+  $style_name = '';
+  
+  //If this is a library image, then, style it according to the image style the user selected in the settings page
+  if(file_valid_uri($badge->image)) {
+    $style_name = variable_get('user_badges_imagecache', '');
+  }
 
   $alt = check_plain($badge->name);
 
@@ -1207,7 +1207,7 @@ function _user_badges_build_image($badge) {
     'attributes' => array('class' => array($badge->class)),
   );
 
-	$theme = $style_name ? 'image_style' : 'image';
+  $theme = $style_name ? 'image_style' : 'image';
 
   $image = theme($theme, $variables);
 
