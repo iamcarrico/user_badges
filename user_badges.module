@@ -1184,7 +1184,7 @@ function theme_user_badge_group($variables) {
  * Helper function to produce badge image.
  */
 function _user_badges_build_image($badge) {
-	
+
   //Initialize the image style
   $style_name = '';
   
@@ -1210,7 +1210,7 @@ function _user_badges_build_image($badge) {
   $theme = $style_name ? 'image_style' : 'image';
 
   $image = theme($theme, $variables);
-
+  
   return $image;
 }
 
