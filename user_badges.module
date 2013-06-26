@@ -910,7 +910,7 @@ function user_badges_get_badges($uid, $options = array()) {
       if ($limit != 0 || $badge->unhideable == 1) {
         if ($uid == 'select') {
           $badges[$uid][$badge->bid] = $badge->name;
-          $badges[$badge->bid]['#attributes'] = array('class' => array("badge badge-" . $badge->bid  . " " . drupal_html_class($badge->name)));
+          $badges[$badge->bid]['#attributes'] = array('class' => array("badge badge-" . $badge->bid . " " . drupal_html_class($badge->name)));
         }
         else {
           $badges[$uid][$stringified_options][$badge->bid] = $badge;
@@ -953,15 +953,15 @@ function user_badge_load($bid) {
 function user_badges_get_roles($rids = NULL, $options = array()) {
   $roles = array();
   $options = array_merge(array('returnbadges' => FALSE), $options);
-  
+
   $query = db_select('user_badges_roles', 'ubr');
   $query->join('user_badges_badges', 'ubb', 'ubb.bid = ubr.bid');
   
   $query->fields('ubr', array('rid'))
     ->fields('ubb');
 
-  if ($rids) {
-    $query->condition('ubr.rid', $rids, 'IN');
+  if (count($rids)) {
+    $query->condition('ubr.rid', array_keys($rids), 'IN');
   }
 
   $records = $query->execute();
@@ -974,6 +974,7 @@ function user_badges_get_roles($rids = NULL, $options = array()) {
       $roles[$row->rid] = $row->bid;
     }
   }
+
   return $roles;
 }
 
@@ -985,7 +986,6 @@ function user_badges_get_roles($rids = NULL, $options = array()) {
  *   An array in the format rid => bid for each role/badge relationship.
  */
 function user_badges_save_roles_for_uid($uid, $roles) {
-
   if (is_array($roles) && isset($uid)) {
     // We have to clear out all role badges first.
     db_query("DELETE FROM {user_badges_user} WHERE type='role' AND uid = :uid", array(':uid' => $uid));
@@ -1084,9 +1084,8 @@ function user_badges_save_roles($roles) {
  * Will save the roles for a particular user each time that user is updated.
  */
 function user_badges_user_update(&$edit, $account, $category) {
-  
   $roles = array();
-  
+
   //Call the following function to get the roles for these rids
   if (isset($account->roles) && count($account->roles)) {
     $roles = user_badges_get_roles($account->roles);
@@ -1189,7 +1188,7 @@ function _user_badges_build_image($badge) {
   $style_name = '';
   
   //If this is a library image, then, style it according to the image style the user selected in the settings page
-  if(file_valid_uri($badge->image)) {
+  if (file_valid_uri($badge->image)) {
     $style_name = variable_get('user_badges_imagecache', '');
   }
 

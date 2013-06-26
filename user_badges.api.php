@@ -5,7 +5,7 @@
  */
 
 /**
- * Allows to modules to react to the deletion of a user_badge.
+ * Allows modules to react to the deletion of a user_badge.
  * This is invoked before the badge is deleted.
  *
  * @param $badge

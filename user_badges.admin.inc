@@ -585,8 +585,8 @@ function user_badges_images_form_submit($form, &$form_state) {
         // If the file is managed, verify that it is not used
         if ($fid) {
           $file = file_load($fid);
-
-	  //Check to see if we are using this image for any badges
+          
+          //Check to see if we are using this image for any badges
           $num_rows = db_select('user_badges_badges', 'ubb')
             ->condition('ubb.image', $path)
             ->countQuery()

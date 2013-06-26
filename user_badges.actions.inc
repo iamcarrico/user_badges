@@ -68,7 +68,7 @@ function user_badges_add_badge_action_form($context) {
       '#type' => 'checkbox',
       '#title' => theme('user_badge', array('badge' => $badge)),
       '#return_value' => 1,
-      '#default_value' => (isset($context['badges'][$badge->bid])) ? $context['badges'][$badge->bid] : false,
+      '#default_value' => (isset($context['badges'][$badge->bid])) ? $context['badges'][$badge->bid] : FALSE,
       '#description' => check_plain($badge->name),
     );
   }
