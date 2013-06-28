@@ -108,6 +108,7 @@ function user_badges_menu() {
 
   $items[USER_BADGES_ADMIN_PATH] = array(
     'title' => 'Badges',
+    'description' => t('Add, edit, and delete badges.  Associate badges with roles and configure site-wide settings for badges.'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('user_badges_badgelist_form'),
     'access arguments' => array('manage badges'),
