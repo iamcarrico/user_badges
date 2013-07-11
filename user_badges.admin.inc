@@ -477,6 +477,18 @@ function user_badges_edit_form_submit($form, &$form_state) {
     // If the badge already exists, delete it and re-insert it.
     $result = db_merge('user_badges_badges')
       ->key(array('bid' => $edit->bid));
+    // Remove image usage for old image.
+    $old_image = db_select('user_badges_badges', 'ubb')
+      ->fields('ubb', array('image'))
+      ->condition('ubb.bid', $edit->bid)
+      ->execute()
+      ->fetchField();
+    if ($old_image) {
+      $file = _user_badges_managed_file($old_image);
+      if ($file) {
+        file_usage_delete($file, 'user_badges', 'user_badge', $edit->bid);
+      }
+    }
   }
   else {
     // If the badge does not exist, insert it.
@@ -495,8 +507,8 @@ function user_badges_edit_form_submit($form, &$form_state) {
       $image = $edit->imagefromlibrary;
   }
 
-  // Add the rest of the fields.
-  $bid = $result->fields(array(
+  // Add the rest of the fields and execute.
+  $result = $result->fields(array(
     'name' => trim($edit->name),
     'image' => $image,
     'weight' => $edit->weight,
@@ -508,19 +520,45 @@ function user_badges_edit_form_submit($form, &$form_state) {
   ))
     ->execute();
 
-  if ($edit->image_location == 'upload') {
-    $bid = isset($edit->bid) ? $edit->bid : $bid;
-    // Make the uploaded file permanent.
-    $file = file_load($form_state['values']['imagefile']);
-    $file->status = FILE_STATUS_PERMANENT;
-    $file = file_move($file, 'public://badges');
-    // Record that the module is using the file.
-    file_usage_add($file, 'user_badges', 'user_badge', $bid);
-    // Update the image url for the badge
-    $result = db_merge('user_badges_badges')
-      ->key(array('bid' => $bid))
-      ->fields(array('image' => $file->uri))
-      ->execute();
+  $bid = isset($edit->bid) ? $edit->bid : $result;
+  if ($bid) {
+    if ($edit->image_location == 'upload') {
+      // Make the uploaded file permanent.
+      $file = file_load($form_state['values']['imagefile']);
+      if ($file) {
+        $file->status = FILE_STATUS_PERMANENT;
+        $file = file_move($file, 'public://badges');
+        if ($file) {
+          // Record that the module is using the file.
+          file_usage_add($file, 'user_badges', 'user_badge', $bid);
+          // Update the image url for the badge.
+          $result = db_merge('user_badges_badges')
+            ->key(array('bid' => $bid))
+            ->fields(array('image' => $file->uri))
+            ->execute();
+          $image = $file->uri;
+        }
+        else {
+          $result = FALSE;
+          watchdog('user_badges', 'Failed to save image file after upload.', array(), WATCHDOG_ERROR);
+        }
+      }
+      else {
+        $result = FALSE;
+        watchdog('user_badges', 'Failed to load image file after upload.', array(), WATCHDOG_ERROR);
+      }
+    }
+    elseif ($edit->image_location == 'library') {
+      // Record that the badge is using the file.
+      $file = _user_badges_managed_file($image);
+      if ($file) {
+        file_usage_add($file, 'user_badges', 'user_badge', $bid);
+      }
+    }
+  }
+  else {
+    $result = FALSE;
+    watchdog('user_badges', 'Invalid badge ID.', array(), WATCHDOG_ERROR);
   }
 
   if ($result) {
@@ -570,49 +608,32 @@ function user_badges_images_form($form, $form_state) {
  * Save the uploaded file or delete the selected one
  */
 function user_badges_images_form_submit($form, &$form_state) {
+  $count = 0;
   $files_to_delete = array_keys(array_filter($form_state['values']['images']));
-
   if (!empty($files_to_delete)) {
     $dir = 'public://badges';
     if (file_prepare_directory($dir)) {
       foreach ($files_to_delete as $path) {
-        $fid = db_select('file_managed', 'f')
-          ->fields('f', array('fid'))
-          ->condition('f.uri', $path)
-          ->execute()
-          ->fetchField();
-
-        // If the file is managed, verify that it is not used
-        if ($fid) {
-          $file = file_load($fid);
-          
-          //Check to see if we are using this image for any badges
-          $num_rows = db_select('user_badges_badges', 'ubb')
-            ->condition('ubb.image', $path)
-            ->countQuery()
-            ->execute()
-            ->fetchField();
-
-            //Delete the file from file_usage table in the $num_rows is 0
-            if ($num_rows == 0) {
-              file_usage_delete($file, 'user_badges');
-            }
-            
-            //Delete the file, it will be true, if successfule, false if an error occurred, or an array if it
-            //is still being used by a module
-            $file_delete_response = file_delete($file);
-            
-            //Set a message if the file hasn't been loaded, or if it could not be deleted
-            if (!$file || !$file_delete_response || is_array($file_delete_response)) {
-              drupal_set_message(t('The file %file is still being used for some badges.',
-                array('%file' => $path)), 'error');
-            }
+        $file = _user_badges_managed_file($path);
+        if ($file) {
+          if (file_usage_list($file)) {
+            drupal_set_message(t('The file %file is in use and cannot be deleted.', array('%file' => $path)), 'error');
+          }
+          else {
+            $count++;
+            file_delete($file);
+          }
         }
         else {
-          // If it is not managed, delete it
-          file_unmanaged_delete($path);
+          drupal_set_message(t('The file %file cannot be deleted by User Badges.', array('%file' => $path)), 'error');
         }
       }
+    }
+    else {
+      drupal_set_message(t('The image directory %dir cannot be accessed.', array('%dir' => $dir)), 'error');
+    }
+    if ($count > 0) {
+      drupal_set_message(t('Deleted @count image(s).', array('@count' => $count)));
     }
   }
 }
@@ -895,32 +916,82 @@ function _user_badges_images_from_library() {
   $selects = array();
 
   $path = 'public://badges';
-  file_prepare_directory($path, FILE_CREATE_DIRECTORY);
-  $dir = drupal_realpath($path);
 
-  $files = file_scan_directory($dir, '/.*\.(jpe?g|png|gif)/i', array('recurse' => FALSE));
-  foreach ($files as $file) {
-    $image = image_get_info($file->uri);
-    $file->filepath = $path . '/' . $file->filename;
+  if (file_prepare_directory($path, FILE_CREATE_DIRECTORY | FILE_MODIFY_PERMISSIONS)) {
+    // Scan directory for images in supported formats.
+    $files = file_scan_directory($path, '/.*\.(jpe?g|png|gif)/i', array('recurse' => FALSE));
+    foreach ($files as $file) {
+      $image = image_get_info($file->uri);
+      if ($image) {
+        $file->filepath = $path . '/' . $file->filename;
 
-    $style_name = variable_get('user_badges_imagecache', '');
-    $variables = array('path' => $file->filepath);
+        $style_name = variable_get('user_badges_imagecache', '');
+        $variables = array('path' => $file->filepath);
 
-    if ($style_name) {
-      $theme = 'image_style';
-      $variables['style_name'] = $style_name;
+        if ($style_name) {
+          $theme = 'image_style';
+          $variables['style_name'] = $style_name;
+        }
+        else {
+          $theme = 'image';
+          $variables['width'] = $image['width'];
+          $variables['height'] = $image['height'];
+        }
+
+        $selects[$file->filepath] = (object) array('image' => theme($theme, $variables), 'file' => $file);
+
+        // Ensures this file is managed in database.
+        if (!_user_badges_managed_file($file->filepath)) {
+          watchdog('user_badges', 'Failed to manage detected image file: @file', array('@file' => $file->filepath), WATCHDOG_ERROR);
+        }
+      }
     }
-    else {
-      $theme = 'image';
-      $variables['width'] = $image['width'];
-      $variables['height'] = $image['height'];
-    }
-
-    $selects[$file->filepath] = (object) array('image' => theme($theme, $variables), 'file' => $file);
   }
-
+  else {
+    // 'public://badges' directory could not be created or has wrong permissions.
+    watchdog('user_badges', 'Scanning for badge images library failed.  Badges directory could not be created or has wrong permissions: @dir', array('@dir' => $path), WATCHDOG_ERROR);
+  }
   return $selects;
 }
+
+
+/**
+ * Convert a uri into a managed file object.
+ *
+ * Loads existing file object for uri
+ * or creates new managed file entry.
+ *
+ * @return object|false
+ *   A file object on success or FALSE in the event of an error.
+ */
+function _user_badges_managed_file($file_uri) {
+  global $user;
+  if (file_valid_uri($file_uri)) {
+    // Check if there's an entry in the database for this file.
+    $fid = db_select('file_managed', 'f')
+          ->fields('f', array('fid'))
+          ->condition('f.uri', $file_uri)
+          ->execute()
+          ->fetchField();
+
+    if ($fid) {
+      return file_load($fid);
+    }
+    else {
+      // If no entry found, we need to save this to the database.
+      $fileob = new stdClass();
+      $fileob->fid = NULL;
+      $fileob->uri = $file_uri;
+      $fileob->filename = drupal_basename($fileob->uri);
+      $fileob->filemime = file_get_mimetype($fileob->uri);
+      $fileob->uid = $user->uid;
+      $fileob->status = FILE_STATUS_PERMANENT;
+      return file_save($fileob);
+    }
+  }
+  return FALSE;
+}
+
 
 /**
  * Get terms belonging to a vocabulary. Can be used in the form's #options field.
@@ -965,14 +1036,9 @@ function user_badges_delete_form_submit($form, &$form_state) {
   // Let other modules know about this.
   module_invoke_all('user_badges_delete', $badge);
 
-  if (file_valid_uri($badge->image)) {
-    // Also delete file usage.
-    $fid = db_select('file_managed', 'f')
-      ->fields('f', array('fid'))
-      ->condition('f.uri', $badge->image)
-      ->execute()
-      ->fetchField();
-    $file = file_load($fid);
+  // Remove file usage for image file.
+  $file = _user_badges_managed_file($badge->image);
+  if ($file) {
     file_usage_delete($file, 'user_badges', 'user_badge', $badge->bid);
   }
 
@@ -988,6 +1054,6 @@ function user_badges_delete_form_submit($form, &$form_state) {
     ->condition('bid', $bid)
     ->execute();
 
-  drupal_set_message(t('The @name badge has been deleted.', array('@name' => $name)));
+  drupal_set_message(t('The @name badge has been deleted.', array('@name' => $badge->name)));
   $form_state['redirect'] = USER_BADGES_ADMIN_PATH;
 }
