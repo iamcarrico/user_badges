@@ -513,7 +513,7 @@ function user_badges_badge_autocomplete($string = '') {
       ->execute();
 
     foreach ($result as $badge) {
-      $matches[$badge->name . ' (' . t('Badge ID') . ' ' . $badge->bid . ')'] =
+      $matches[$badge->name . ' (' . 'Badge ID' . ' ' . $badge->bid . ')'] =
         check_plain($badge->name) . ' ' . theme('user_badge', array('badge' => $badge));
     }
   }
@@ -537,7 +537,7 @@ function user_badges_badge_autocomplete($string = '') {
  *   'nobid' for a correctly formatted string with an invalid badge ID
  */
 function user_badges_badge_autocomplete_validation($value) {
-  if (preg_match('/\(' . t('Badge ID') . ' (\d+)\)/', $value, $matches)) {
+  if (preg_match('/\(' . 'Badge ID' . ' (\d+)\)/', $value, $matches)) {
     //The format was correct, but we need to check the bid exists
     $bid = $matches[1];
     $records = db_select('user_badges_badges', 'ubb')

@@ -730,7 +730,7 @@ function user_badges_roles_form_submit($form, &$form_state) {
   $array = $form_state['values']['roles'] + $form_state['values']['blocked'];
   foreach ($array as $field => &$value) {
     // We now have a string as our badge, so just extract the bid.
-    preg_match('/\(' . t('Badge ID') . ' (\d+)\)/', $value, $matches);
+    preg_match('/\(' . 'Badge ID' . ' (\d+)\)/', $value, $matches);
     // Transform our value into just the bid.
     if (!empty($matches)) {
       $value = $matches[1];
