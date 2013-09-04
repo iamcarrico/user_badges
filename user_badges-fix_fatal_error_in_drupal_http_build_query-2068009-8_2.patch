@@ -1,0 +1,16 @@
+diff --git a/user_badges.module b/user_badges.module
+index 53f6f2c..fc62e5a 100644
+--- a/user_badges.module
++++ b/user_badges.module
+@@ -1244,6 +1244,11 @@ function theme_user_badge($variables) {
+       $pieces['path'] = $pieces['scheme'] . '://' . $pieces['host'] . $pieces['path'];
+     }
+ 
++    // We need to convert the query to an associative array before we pass it
++    // to the l() function.
++    if (isset($pieces['query'])) {
++      $pieces['query'] = drupal_get_query_array($pieces['query']);
++    }
+     return l($image, $pieces['path'], $pieces);
+   }
+ }
