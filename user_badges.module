@@ -1234,7 +1234,11 @@ function theme_user_badge($variables) {
 
     // Implement token replacement.
     if (module_exists('token')) {
-      $href = token_replace($href, array('userbadge' => $badge, 'user' => $account));
+      $vars = array('userbadge' => $badge);
+      if (isset($variables['account'])) {
+        $vars['user'] = $variables['account'];
+      }
+      $href = token_replace($href, $vars);
     }
 
     $pieces = parse_url($href);
@@ -1305,7 +1309,7 @@ function user_badges_block_view($delta = 0) {
           $result = isset($account->badges) ? $account->badges : array();
           $images = array();
           foreach ($result as $badge) {
-            $images[] = theme('user_badge', array('badge' => $badge));
+            $images[] = theme('user_badge', array('badge' => $badge, 'account' => $account));
           }
           $block['subject'] = t("@name's Badges", array('@name' => $node->name));
           $block['content'] = theme('user_badge_group', array('badgeimages' => $images));
@@ -1326,7 +1330,7 @@ function user_badges_block_view($delta = 0) {
       }
       $images = array();
       foreach ($result as $badge) {
-        $images[] = theme('user_badge', array('badge' => $badge));
+        $images[] = theme('user_badge', array('badge' => $badge, 'account' => $user));
       }
       $block['subject'] = t('My Badges');
       $block['content'] = theme('user_badge_group', array('badgeimages' => $images));
