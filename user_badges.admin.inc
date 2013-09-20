@@ -644,8 +644,8 @@ function user_badges_images_form_submit($form, &$form_state) {
 function user_badges_roles_form($form, &$form_state) {
   // No badges for the anonymous role.
   $roles = user_roles(TRUE);
-  $badges = user_badges_get_roles(NULL, array('returnbadges' => TRUE));
-
+  $role_badges = user_badges_get_roles(NULL, array('returnbadges' => TRUE));
+    
   $form['blocked'] = array(
     '#type' => 'fieldset',
     '#title' => t('Blocked Badge'),
@@ -653,16 +653,7 @@ function user_badges_roles_form($form, &$form_state) {
     '#collapsed' => FALSE,
     '#tree' => TRUE,
   );
-  $form['blocked'][0] = array(
-    '#type' => 'textfield',
-    '#title' => t('blocked user'),
-    '#size' => 40,
-    '#maxlength' => 255,
-    '#autocomplete_path' => 'user_badges/autocomplete',
-    '#default_value' => isset($badges[0]) ? $badges[0]->name . ' ' . t('(Badge ID') . ' ' . $badges[0]->bid . ')' : '',
-    '#field_suffix' => isset($badges[0]) ? ' ' . t('Current:') . ' ' . $badges[0]->image : '',
-  );
-
+  
   $form['roles'] = array(
     '#type' => 'fieldset',
     '#title' => t('Role Badges'),
@@ -670,18 +661,66 @@ function user_badges_roles_form($form, &$form_state) {
     '#collapsed' => FALSE,
     '#tree' => TRUE,
   );
-
-  foreach ($roles as $rid => $role) {
-    $form['roles'][$rid] = array(
+  
+  //Determine which selector type the user wants to use to set badges from their settings
+  //If the user wants to use the drop-down selector, display that if there are records in the db
+  if (variable_get('user_badges_selector_type', 1) == 0) {
+  
+    //First, load all the available badges from the database by calling the following helper function
+    $result = user_badges_load_badges();
+    
+    //Display the drop-down only if we get any records
+    if ($result->rowCount()) {
+      foreach ($result as $badge) {
+        $options[$badge->bid] = t('Badge') . ' ' . $badge->bid . ' ' . '-' . ' ' . $badge->name;
+      }
+  
+      $form['blocked'][0] = array(
+        '#type' => 'select',
+        '#title' => t('blocked user'),
+        '#empty_option' => '- None -',
+        '#options' => $options,
+        '#default_value' => isset($role_badges[0]) ? $role_badges[0]->bid : '',
+        '#field_suffix' => isset($role_badges[0]) ? ' ' . t('Current:') . ' ' . $role_badges[0]->image : '',
+      );
+      
+      foreach ($roles as $rid => $role) {
+        $form['roles'][$rid] = array(
+          '#type' => 'select',
+          '#title' => check_plain($role),
+          '#empty_option' => '- None -',
+          '#options' => $options,
+          '#default_value' => isset($role_badges[$rid]) ? $role_badges[$rid]->bid : '',
+          '#field_suffix' => isset($role_badges[$rid]) ?
+            ' ' . t('Current:') . ' ' . _user_badges_build_image($role_badges[$rid]) : '',
+        ); 
+      }
+    }
+  }
+  //Else, if the user wants to use the autocomplete or if there are no records in the db, display that
+  else {
+    $form['blocked'][0] = array(
       '#type' => 'textfield',
-      '#title' => check_plain($role),
+      '#title' => t('blocked user'),
+      '#size' => 40,
       '#maxlength' => 255,
       '#autocomplete_path' => 'user_badges/autocomplete',
-      '#default_value' => isset($badges[$rid]) ? $badges[$rid]->name . ' '
-        . t('(Badge ID') . ' ' . $badges[$rid]->bid . ')' : '',
-      '#field_suffix' => isset($badges[$rid]) ?
-        ' ' . t('Current:') . ' ' . _user_badges_build_image($badges[$rid]) : '',
+      '#default_value' => isset($role_badges[0]) ? $role_badges[0]->name . ' ' . t('(Badge ID') . ' ' . $role_badges[0]->bid . ')' : '',
+      '#field_suffix' => isset($role_badges[0]) ? ' ' . t('Current:') . ' ' . $role_badges[0]->image : '',
     );
+    
+    foreach ($roles as $rid => $role) {
+      $form['roles'][$rid] = array(
+        '#type' => 'textfield',
+        '#title' => check_plain($role),
+        '#maxlength' => 255,
+        '#autocomplete_path' => 'user_badges/autocomplete',
+        '#default_value' => isset($role_badges[$rid]) ? $role_badges[$rid]->name . ' '
+          . t('(Badge ID') . ' ' . $role_badges[$rid]->bid . ')' : '',
+        '#field_suffix' => isset($role_badges[$rid]) ?
+          ' ' . t('Current:') . ' ' . _user_badges_build_image($role_badges[$rid]) : '',
+      ); 
+    }
   }
 
   $form[] = array(
@@ -695,28 +734,32 @@ function user_badges_roles_form($form, &$form_state) {
  * Validation function for user_badges_roles_form.
  */
 function user_badges_roles_form_validate($form, &$form_state) {
-  $array = $form_state['values']['roles'] + $form_state['values']['blocked'];
-  // Go through all the entries and make sure they all have a valid badge ID.
-  foreach ($array as $field => $value) {
-    if (!empty($value)) {
-      // The field isn't empty, so we should validate it.
-      $validation = user_badges_badge_autocomplete_validation($value);
-      //Is it correctly formatted?
-      if ($validation[1] == 'string') {
-        if ($field == 0) {
-          form_set_error('blocked][' . $field, t('"@value" is not a valid badge name. Try using the autocomplete function (requires javascript).', array('@value' => $value)));
+  //If the selector type used to add badges was the autocomplete, then, validate the text in the autocomplete boxes
+  if (variable_get('user_badges_selector_type', 1) == 1) {
+    $array = $form_state['values']['roles'] + $form_state['values']['blocked'];
+    
+    // Go through all the entries and make sure they all have a valid badge ID.
+    foreach ($array as $field => $value) {
+      if (!empty($value)) {
+        // The field isn't empty, so we should validate it.
+        $validation = user_badges_badge_autocomplete_validation($value);
+        //Is it correctly formatted?
+        if ($validation[1] == 'string') {
+          if ($field == 0) {
+            form_set_error('blocked][' . $field, t('"@value" is not a valid badge name. Try using the autocomplete function (requires javascript).', array('@value' => $value)));
+          }
+          else {
+            form_set_error('roles][' . $field, t('"@value" is not a valid badge name. Try using the autocomplete function (requires javascript).', array('@value' => $value)));
+          }
         }
-        else {
-          form_set_error('roles][' . $field, t('"@value" is not a valid badge name. Try using the autocomplete function (requires javascript).', array('@value' => $value)));
-        }
-      }
-      // The format was correct, but we need to check the bid exists.
-      elseif ($validation[1] == 'nobid') {
-        if ($field == 0) {
-          form_set_error('blocked][' . $field, t('@value is not a valid badge ID. Try using the autocomplete function (requires javascript).', array('@value' => $validation[0])));
-        }
-        else {
-          form_set_error('roles][' . $field, t('@value is not a valid badge ID. Try using the autocomplete function (requires javascript).', array('@value' => $validation[0])));
+        // The format was correct, but we need to check the bid exists.
+        elseif ($validation[1] == 'nobid') {
+          if ($field == 0) {
+            form_set_error('blocked][' . $field, t('@value is not a valid badge ID. Try using the autocomplete function (requires javascript).', array('@value' => $validation[0])));
+          }
+          else {
+            form_set_error('roles][' . $field, t('@value is not a valid badge ID. Try using the autocomplete function (requires javascript).', array('@value' => $validation[0])));
+          }
         }
       }
     }
@@ -728,12 +771,16 @@ function user_badges_roles_form_validate($form, &$form_state) {
  */
 function user_badges_roles_form_submit($form, &$form_state) {
   $array = $form_state['values']['roles'] + $form_state['values']['blocked'];
-  foreach ($array as $field => &$value) {
-    // We now have a string as our badge, so just extract the bid.
-    preg_match('/\(' . 'Badge ID' . ' (\d+)\)/', $value, $matches);
-    // Transform our value into just the bid.
-    if (!empty($matches)) {
-      $value = $matches[1];
+
+  //If the selectory type used to enter badges was the autocomplete, then, extract the bid from the text
+  if (variable_get('user_badges_selector_type', 1) == 1) {
+    foreach ($array as $field => &$value) {
+      // We now have a string as our badge, so just extract the bid.
+      preg_match('/\(' . t('Badge ID') . ' (\d+)\)/', $value, $matches);
+      // Transform our value into just the bid.
+      if (!empty($matches)) {
+        $value = $matches[1];
+      }
     }
   }
   user_badges_save_roles($array);
@@ -784,6 +831,32 @@ function user_badges_settings_form($form, &$form_state) {
     '#default_value' => variable_get('user_badges_list_show_users', 0),
     '#description' => t('If selected, the user badges list will include all of the users who have been assigned the badge.'),
     '#attributes' => array('class' => array('container-inline')),
+  );
+  
+  $form['selector_type'] = array(
+    '#type' => 'select',
+    '#options' => array(
+      0 => t('drop-down multi-select'),
+      1 => t('autocomplete'),
+    ),
+    '#title' => t('Selector to set a badge'),
+    '#default_value' => variable_get('user_badges_selector_type', 1),
+    '#description' => t('Select which type of selector to use to set a badge.'),
+    '#attributes' => array('class' => array('container-inline')),
+  );
+  
+  $form['enable_badge_images'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Enable badge images in drop-down multi-select'),
+    '#default_value' => 0,
+    '#description' => t('If checked, images for all the badges will appear next to their badge name in the drop-down select.
+      This might lead to performance issues if the site contains a lot of badges.  Consequenlty, please exercise caution when enabling this.'),
+    '#attributes' => array('class' => array('container-inline')),
+    '#states' => array(
+      'visible' => array(
+        ':input[name="selector_type"]' => array('value' => '0'),
+      ),
+    ),
   );
 
   $form['imagecache'] = array(
@@ -882,6 +955,8 @@ function user_badges_settings_form_submit($form, $form_state) {
   variable_set('user_badges_showblocked', $form_state['values']['showblocked']);
   variable_set('user_badges_userweight', $form_state['values']['userweight']);
   variable_set('user_badges_list_show_users', $form_state['values']['show_users']);
+  variable_set('user_badges_selector_type', $form_state['values']['selector_type']);
+  variable_set('user_badges_enable_badge_images', $form_state['values']['enable_badge_images']);
   variable_set('user_badges_imagecache', $form_state['values']['imagecache']);
   variable_set('user_badges_nobadges', $form_state['values']['nobadges']);
 

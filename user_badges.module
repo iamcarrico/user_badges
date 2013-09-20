@@ -643,15 +643,47 @@ function user_badges_change_form($form, &$form_state, $account) {
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
   );
-
-  for ($i = 1; $i <= 5; $i++) {
-    $form['add']['add' . $i] = array(
-      '#type' => 'textfield',
-      '#title' => t('New Badge @number', array('@number' => $i)),
-      '#size' => 40,
-      '#maxlength' => 255,
-      '#autocomplete_path' => 'user_badges/autocomplete',
-    );
+  
+  //Determine which selector type the user wants to use to set badges from their settings
+  //If the user wants to use the drop-down selector, display that if there are records in the db
+  if (variable_get('user_badges_selector_type', 1) == 0) {
+  
+    //First, load all the available badges from the database by calling the following helper function
+    $result = user_badges_load_badges();
+    
+    //Display the drop-down only if we get any records
+    if ($result->rowCount()) {
+      foreach ($result as $badge) {
+        $options[$badge->bid] = t('Badge') . ' ' . $badge->bid . ' ' . '-' . ' ' . $badge->name;
+      }
+      
+      //Initialize the $options array, which will contain all the badges fetched from the db
+      //Add a - None - option to the badge list as Drupal core won't give it to us automatically
+      //because it is a multi select list!!
+      $options[-1] = '- None -';
+    
+      //Add the drop-down multi select box to add badges
+      $form['add']['add_drop_down'] = array(
+        '#type' => 'select',
+        '#title' => t('New Badges'),
+        '#options' => $options,
+        '#multiple' => TRUE,
+      );
+    }
+  }
+  //Else, if the user wants to use the autocomplete box to set badges or if there are no records in the db,
+  //then, display, 5 autocomplete boxes for them to select from
+  else {
+    for ($i = 1; $i <= 5; $i++) {
+      //Add the autocomplete boxes to add badges
+      $form['add']['add_autocomplete' . $i] = array(
+        '#type' => 'textfield',
+        '#title' => t('New Badge @number', array('@number' => $i)),
+        '#size' => 40,
+        '#maxlength' => 255,
+        '#autocomplete_path' => 'user_badges/autocomplete',
+      );
+    }  
   }
 
   if (isset($account->badges_all) && count($account->badges_all)) {
@@ -679,23 +711,44 @@ function user_badges_change_form($form, &$form_state, $account) {
     '#value' => t('Update Badges'),
     '#weight' => 10,
   );
+  
   return $form;
+}
+
+/**
+ * Helper function to load all the badges from the database
+ *
+ * @return
+ *   An array of badge objects
+ */
+function user_badges_load_badges() {
+  //Load all the available badges from the database
+  $result = db_query("
+    SELECT b.bid, b.weight, b.name, b.image 
+    FROM {user_badges_badges} b
+    ORDER BY b.weight, b.name"
+  );
+
+  return $result;
 }
 
 /**
  * Validate user_badges_remove_form form submissions.
  */
 function user_badges_change_form_validate($form, &$form_state) {
-  for ($i = 1; $i <= 5; $i++) {
-    if (!empty($form_state['values']['add' . $i])) {
-      $validation = user_badges_badge_autocomplete_validation($form_state['values']['add' . $i]);
-      switch ($validation[1]) {
-        case 'nobid':
-          form_set_error('add' . $i, t('@value is not a valid badge ID. Try using the autocomplete function (requires javascript).', array('@value' => $validation[0])));
-          break;
-        case 'string':
-          form_set_error('add' . $i, t('"@value" is not a valid badge. Try using the autocomplete function (requires javascript).', array('@value' => $form_state['values']['add' . $i])));
-          break;
+  //If the user used the autocomplete to select badges, validate the text in them
+  if (variable_get('user_badges_selector_type', 1) == 1) {
+    for ($i = 1; $i <= 5; $i++) {
+      if (!empty($form_state['values']['add_autocomplete' . $i])) {
+        $validation = user_badges_badge_autocomplete_validation($form_state['values']['add_autocomplete' . $i]);
+        switch ($validation[1]) {
+          case 'nobid':
+            form_set_error('add_autocomplete' . $i, t('@value is not a valid badge ID. Try using the autocomplete function (requires javascript).', array('@value' => $validation[0])));
+            break;
+          case 'string':
+            form_set_error('add_autocomplete' . $i, t('"@value" is not a valid badge. Try using the autocomplete function (requires javascript).', array('@value' => $form_state['values']['add_autocomplete' . $i])));
+            break;
+        }
       }
     }
   }
@@ -709,11 +762,23 @@ function user_badges_change_form_validate($form, &$form_state) {
 function user_badges_change_form_submit($form, &$form_state) {
   $uid = $form_state['values']['uid'];
 
-  //Add badges for non-empty fields
-  for ($i = 1; $i <= 5; $i++) {
-    if (!empty($form_state['values']['add' . $i])) {
-      $validation = user_badges_badge_autocomplete_validation($form_state['values']['add' . $i]);
-      user_badges_user_add_badge($uid, $validation[0], 'user');
+  //If the user used the multi drop-down to select badges, submit them accordingly
+  if (variable_get('user_badges_selector_type', 1) == 0) {
+    foreach ($form_state['values']['add_drop_down'] as $bid) {
+      //We have to add this validation as we don't want to add the - None - case which might have been selected
+      if ($bid > 0) {
+        user_badges_user_add_badge($uid, $bid, 'user');
+      }
+    }
+  }
+  //Else, if the user used the autocomplete to select badges, submit them accordingly
+  else {
+    //Add badges for non-empty fields
+    for ($i = 1; $i <= 5; $i++) {
+      if (!empty($form_state['values']['add_autocomplete' . $i])) {
+        $validation = user_badges_badge_autocomplete_validation($form_state['values']['add_autocomplete' . $i]);
+        user_badges_user_add_badge($uid, $validation[0], 'user');
+      }
     }
   }
 
@@ -797,6 +862,12 @@ function user_badges_user_save($edit, $uid, $quiet = TRUE) {
  * @return bool with query success
  */
 function user_badges_user_add_badge($uid, $bid, $type = NULL) {
+  // Integrate rules events.
+  if (module_exists('rules')) {
+    $variables = array('user' => $uid, 'badge_id' => $bid);
+    rules_invoke_event_by_args('user_badges_badge_given', $variables);
+  }
+  
   user_badges_user_remove_badge($uid, $bid, $type);
   return $id = db_insert('user_badges_user')
     ->fields(array(
@@ -818,6 +889,12 @@ function user_badges_user_add_badge($uid, $bid, $type = NULL) {
  * @return bool with query success
  */
 function user_badges_user_remove_badge($uid, $bid, $type = NULL) {
+  // Integrate rules events.
+  if (module_exists('rules')) {
+    $variables = array('user' => $uid, 'badge_id' => $bid);
+    rules_invoke_event_by_args('user_badges_badge_removed', $variables);
+  }
+  
   if (is_null($type)) {
     return db_delete('user_badges_user')
       ->condition('uid', $uid)
