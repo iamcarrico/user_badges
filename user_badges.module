@@ -953,7 +953,7 @@ function user_badges_get_badges($uid, $options = array()) {
 
       if ($usr && variable_get('user_badges_showblocked', 0)) {
         $sql = db_query('SELECT DISTINCT b.bid, u.uid, b.weight, b.name, b.image, b.href,
-          b.unhideable, b.fixedweight, b.doesnotcounttolimit, u.userweight, b.tid, r.rid
+          b.unhideable, b.fixedweight, b.doesnotcounttolimit, u.userweight, b.tid, r.rid,
           CASE WHEN b.fixedweight = 1 THEN b.weight ELSE COALESCE(u.userweight,b.weight) END coalescedweight
           FROM {user_badges_badges} b
             INNER JOIN {user_badges_user} u ON b.bid = u.bid
