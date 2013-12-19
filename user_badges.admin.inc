@@ -205,7 +205,7 @@ function theme_user_badges_badgelist_form($variables) {
   if ($form['pager']['#markup']) {
     $output .= drupal_render($form['pager']);
   }
-  
+
   //Render the rest of the form elements
   $output .= drupal_render_children($form);
 
@@ -645,7 +645,7 @@ function user_badges_roles_form($form, &$form_state) {
   // No badges for the anonymous role.
   $roles = user_roles(TRUE);
   $role_badges = user_badges_get_roles(NULL, array('returnbadges' => TRUE));
-    
+
   $form['blocked'] = array(
     '#type' => 'fieldset',
     '#title' => t('Blocked Badge'),
@@ -653,7 +653,7 @@ function user_badges_roles_form($form, &$form_state) {
     '#collapsed' => FALSE,
     '#tree' => TRUE,
   );
-  
+
   $form['roles'] = array(
     '#type' => 'fieldset',
     '#title' => t('Role Badges'),
@@ -661,20 +661,20 @@ function user_badges_roles_form($form, &$form_state) {
     '#collapsed' => FALSE,
     '#tree' => TRUE,
   );
-  
+
   //Determine which selector type the user wants to use to set badges from their settings
   //If the user wants to use the drop-down selector, display that if there are records in the db
   if (variable_get('user_badges_selector_type', 1) == 0) {
-  
+
     //First, load all the available badges from the database by calling the following helper function
     $result = user_badges_load_badges();
-    
+
     //Display the drop-down only if we get any records
     if ($result->rowCount()) {
       foreach ($result as $badge) {
         $options[$badge->bid] = t('Badge') . ' ' . $badge->bid . ' ' . '-' . ' ' . $badge->name;
       }
-  
+
       $form['blocked'][0] = array(
         '#type' => 'select',
         '#title' => t('blocked user'),
@@ -683,7 +683,7 @@ function user_badges_roles_form($form, &$form_state) {
         '#default_value' => isset($role_badges[0]) ? $role_badges[0]->bid : '',
         '#field_suffix' => isset($role_badges[0]) ? ' ' . t('Current:') . ' ' . $role_badges[0]->image : '',
       );
-      
+
       foreach ($roles as $rid => $role) {
         $form['roles'][$rid] = array(
           '#type' => 'select',
@@ -693,7 +693,7 @@ function user_badges_roles_form($form, &$form_state) {
           '#default_value' => isset($role_badges[$rid]) ? $role_badges[$rid]->bid : '',
           '#field_suffix' => isset($role_badges[$rid]) ?
             ' ' . t('Current:') . ' ' . _user_badges_build_image($role_badges[$rid]) : '',
-        ); 
+        );
       }
     }
   }
@@ -708,7 +708,7 @@ function user_badges_roles_form($form, &$form_state) {
       '#default_value' => isset($role_badges[0]) ? $role_badges[0]->name . ' ' . t('(Badge ID') . ' ' . $role_badges[0]->bid . ')' : '',
       '#field_suffix' => isset($role_badges[0]) ? ' ' . t('Current:') . ' ' . $role_badges[0]->image : '',
     );
-    
+
     foreach ($roles as $rid => $role) {
       $form['roles'][$rid] = array(
         '#type' => 'textfield',
@@ -719,7 +719,7 @@ function user_badges_roles_form($form, &$form_state) {
           . t('(Badge ID') . ' ' . $role_badges[$rid]->bid . ')' : '',
         '#field_suffix' => isset($role_badges[$rid]) ?
           ' ' . t('Current:') . ' ' . _user_badges_build_image($role_badges[$rid]) : '',
-      ); 
+      );
     }
   }
 
@@ -734,12 +734,16 @@ function user_badges_roles_form($form, &$form_state) {
  * Validation function for user_badges_roles_form.
  */
 function user_badges_roles_form_validate($form, &$form_state) {
-  //If the selector type used to add badges was the autocomplete, then, validate the text in the autocomplete boxes
-  if (variable_get('user_badges_selector_type', 1) == 1) {
-    $array = $form_state['values']['roles'] + $form_state['values']['blocked'];
-    
-    // Go through all the entries and make sure they all have a valid badge ID.
-    foreach ($array as $field => $value) {
+  // Get the user selected values from the multi-select/autocomplete.
+  $array = $form_state['values']['roles'] + $form_state['values']['blocked'];
+
+  // Initialize the $bids array which will store all the bids.
+  $bids = array();
+
+  // Go through all the entries and make sure they all have a valid badge ID.
+  foreach ($array as $field => $value) {
+    //If the selector type used to add badges was the autocomplete, then, validate the text in the autocomplete boxes
+    if (variable_get('user_badges_selector_type', 1) == 1) {
       if (!empty($value)) {
         // The field isn't empty, so we should validate it.
         $validation = user_badges_badge_autocomplete_validation($value);
@@ -761,6 +765,23 @@ function user_badges_roles_form_validate($form, &$form_state) {
             form_set_error('roles][' . $field, t('@value is not a valid badge ID. Try using the autocomplete function (requires javascript).', array('@value' => $validation[0])));
           }
         }
+      }
+    }
+    // Now we add the valid bids to an array so that we can check if there
+    // are any duplicate bids assigned to a role.
+    // Only add to the array if the selected value is not 'none' (multi-select)
+    if ($value != NULL) {
+      $bids[$field] = $value;
+    }
+  }
+
+  // Now we check if there are duplicate bids in the $bids array and output
+  // an error message if there are.
+  if (isset($bids)) {
+    $duplicate_bids = array_unique(array_diff_assoc($bids, array_unique($bids)));
+    if (isset($duplicate_bids)) {
+      foreach ($duplicate_bids as $field => $bid) {
+        form_set_error('roles][' . $field, t('@bid has already been assigned to a role. Please choose another bid to assign to this role.', array('@bid' => $bid)));
       }
     }
   }
@@ -832,7 +853,7 @@ function user_badges_settings_form($form, &$form_state) {
     '#description' => t('If selected, the user badges list will include all of the users who have been assigned the badge.'),
     '#attributes' => array('class' => array('container-inline')),
   );
-  
+
   $form['selector_type'] = array(
     '#type' => 'select',
     '#options' => array(
@@ -844,7 +865,7 @@ function user_badges_settings_form($form, &$form_state) {
     '#description' => t('Select which type of selector to use to set a badge.'),
     '#attributes' => array('class' => array('container-inline')),
   );
-  
+
   $form['enable_badge_images'] = array(
     '#type' => 'checkbox',
     '#title' => t('Enable badge images in drop-down multi-select'),
