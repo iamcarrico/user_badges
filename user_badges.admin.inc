@@ -681,7 +681,6 @@ function user_badges_roles_form($form, &$form_state) {
         '#empty_option' => '- None -',
         '#options' => $options,
         '#default_value' => isset($role_badges[0]) ? $role_badges[0]->bid : '',
-        '#field_suffix' => isset($role_badges[0]) ? ' ' . t('Current:') . ' ' . $role_badges[0]->image : '',
       );
 
       foreach ($roles as $rid => $role) {
@@ -691,8 +690,6 @@ function user_badges_roles_form($form, &$form_state) {
           '#empty_option' => '- None -',
           '#options' => $options,
           '#default_value' => isset($role_badges[$rid]) ? $role_badges[$rid]->bid : '',
-          '#field_suffix' => isset($role_badges[$rid]) ?
-            ' ' . t('Current:') . ' ' . _user_badges_build_image($role_badges[$rid]) : '',
         );
       }
     }
@@ -706,7 +703,7 @@ function user_badges_roles_form($form, &$form_state) {
       '#maxlength' => 255,
       '#autocomplete_path' => 'user_badges/autocomplete',
       '#default_value' => isset($role_badges[0]) ? $role_badges[0]->name . ' ' . t('(Badge ID') . ' ' . $role_badges[0]->bid . ')' : '',
-      '#field_suffix' => isset($role_badges[0]) ? ' ' . t('Current:') . ' ' . $role_badges[0]->image : '',
+      '#field_suffix' => isset($role_badges[0]) ? ' ' . t('Current:') . ' ' . _user_badges_build_image($role_badges[0]) : '',
     );
 
     foreach ($roles as $rid => $role) {
@@ -866,20 +863,6 @@ function user_badges_settings_form($form, &$form_state) {
     '#attributes' => array('class' => array('container-inline')),
   );
 
-  $form['enable_badge_images'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Enable badge images in drop-down multi-select'),
-    '#default_value' => 0,
-    '#description' => t('If checked, images for all the badges will appear next to their badge name in the drop-down select.
-      This might lead to performance issues if the site contains a lot of badges.  Consequenlty, please exercise caution when enabling this.'),
-    '#attributes' => array('class' => array('container-inline')),
-    '#states' => array(
-      'visible' => array(
-        ':input[name="selector_type"]' => array('value' => '0'),
-      ),
-    ),
-  );
-
   $form['imagecache'] = array(
     '#type' => 'select',
     '#options' => image_style_options(),
@@ -977,7 +960,6 @@ function user_badges_settings_form_submit($form, $form_state) {
   variable_set('user_badges_userweight', $form_state['values']['userweight']);
   variable_set('user_badges_list_show_users', $form_state['values']['show_users']);
   variable_set('user_badges_selector_type', $form_state['values']['selector_type']);
-  variable_set('user_badges_enable_badge_images', $form_state['values']['enable_badge_images']);
   variable_set('user_badges_imagecache', $form_state['values']['imagecache']);
   variable_set('user_badges_nobadges', $form_state['values']['nobadges']);
 

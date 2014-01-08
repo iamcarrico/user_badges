@@ -238,7 +238,7 @@ function user_badges_user_load($users) {
         // whether we filter the ones we show.
         // @TODO: This also doesn't get role badges.
         $badges_all = user_badges_get_badges($uid, array('nolimit' => TRUE));
-        
+
         $users[$uid]->badges_all = $badges_all;
         $users[$uid]->badges_count = count($badges_all);
         // If there is a limit set, then, display the badges according to the limit
@@ -308,7 +308,7 @@ function user_badges_user_categories() {
       'title' => 'Badges',
       'weight' => 5,
       'access callback' => 'user_access',
-      'access arguments' => array('change own badge assignments'), 
+      'access arguments' => array('change own badge assignments'),
     ),
   );
 }
@@ -321,7 +321,7 @@ function user_badges_user_categories() {
 function user_badges_menu_alter(&$callbacks) {
   $callbacks['user/%user_category/edit/badges']['page callback'] = 'user_badges_page';
   $callbacks['user/%user_category/edit/badges']['module'] = 'user_badges';
-  $callbacks['user/%user_category/edit/badges']['page arguments'] = array(1);  
+  $callbacks['user/%user_category/edit/badges']['page arguments'] = array(1);
   $callbacks['user/%user_category/edit/badges']['file'] = 'user_badges.module';
 }
 
@@ -643,25 +643,25 @@ function user_badges_change_form($form, &$form_state, $account) {
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
   );
-  
+
   //Determine which selector type the user wants to use to set badges from their settings
   //If the user wants to use the drop-down selector, display that if there are records in the db
   if (variable_get('user_badges_selector_type', 1) == 0) {
-  
+
     //First, load all the available badges from the database by calling the following helper function
     $result = user_badges_load_badges();
-    
+
     //Display the drop-down only if we get any records
     if ($result->rowCount()) {
       foreach ($result as $badge) {
         $options[$badge->bid] = t('Badge') . ' ' . $badge->bid . ' ' . '-' . ' ' . $badge->name;
       }
-      
+
       //Initialize the $options array, which will contain all the badges fetched from the db
       //Add a - None - option to the badge list as Drupal core won't give it to us automatically
       //because it is a multi select list!!
       $options[-1] = '- None -';
-    
+
       //Add the drop-down multi select box to add badges
       $form['add']['add_drop_down'] = array(
         '#type' => 'select',
@@ -683,7 +683,7 @@ function user_badges_change_form($form, &$form_state, $account) {
         '#maxlength' => 255,
         '#autocomplete_path' => 'user_badges/autocomplete',
       );
-    }  
+    }
   }
 
   if (isset($account->badges_all) && count($account->badges_all)) {
@@ -711,7 +711,7 @@ function user_badges_change_form($form, &$form_state, $account) {
     '#value' => t('Update Badges'),
     '#weight' => 10,
   );
-  
+
   return $form;
 }
 
@@ -723,11 +723,11 @@ function user_badges_change_form($form, &$form_state, $account) {
  */
 function user_badges_load_badges() {
   //Load all the available badges from the database
-  $result = db_query("
-    SELECT b.bid, b.weight, b.name, b.image 
-    FROM {user_badges_badges} b
-    ORDER BY b.weight, b.name"
-  );
+  $result = db_select('user_badges_badges', 'ubb')
+    ->fields('ubb')
+    ->orderBy('ubb.weight', 'asc')
+    ->orderBy('ubb.name', 'asc')
+    ->execute();
 
   return $result;
 }
@@ -867,7 +867,7 @@ function user_badges_user_add_badge($uid, $bid, $type = NULL) {
     $variables = array('user' => $uid, 'badge_id' => $bid);
     rules_invoke_event_by_args('user_badges_badge_given', $variables);
   }
-  
+
   user_badges_user_remove_badge($uid, $bid, $type);
   return $id = db_insert('user_badges_user')
     ->fields(array(
@@ -894,7 +894,7 @@ function user_badges_user_remove_badge($uid, $bid, $type = NULL) {
     $variables = array('user' => $uid, 'badge_id' => $bid);
     rules_invoke_event_by_args('user_badges_badge_removed', $variables);
   }
-  
+
   if (is_null($type)) {
     return db_delete('user_badges_user')
       ->condition('uid', $uid)
@@ -1034,7 +1034,7 @@ function user_badges_get_roles($rids = NULL, $options = array()) {
 
   $query = db_select('user_badges_roles', 'ubr');
   $query->join('user_badges_badges', 'ubb', 'ubb.bid = ubr.bid');
-  
+
   $query->fields('ubr', array('rid'))
     ->fields('ubb');
 
@@ -1264,7 +1264,7 @@ function _user_badges_build_image($badge) {
 
   //Initialize the image style
   $style_name = '';
-  
+
   //If this is a library image, then, style it according to the image style the user selected in the settings page
   if (file_valid_uri($badge->image)) {
     $style_name = variable_get('user_badges_imagecache', '');
@@ -1287,7 +1287,7 @@ function _user_badges_build_image($badge) {
   $theme = $style_name ? 'image_style' : 'image';
 
   $image = theme($theme, $variables);
-  
+
   return $image;
 }
 
@@ -1301,7 +1301,7 @@ function theme_user_badge($variables) {
 
   // We don't link the badge if there is no link and no default,
   // or if the default is overridden.
-  if (($badge->href == '' && !variable_get('user_badges_defaulthref', ''))
+  if (!isset($badge->href) || ($badge->href == '' && !variable_get('user_badges_defaulthref', ''))
     || drupal_strtolower($badge->href) == '<none>'
   ) {
     return $image;
@@ -1414,11 +1414,7 @@ function user_badges_block_view($delta = 0) {
       break;
 
     case 'all_badges':
-      $result = db_select('user_badges_badges', 'ubb')
-        ->fields('ubb')
-        ->orderBy('ubb.weight', 'asc')
-        ->orderBy('ubb.name', 'asc')
-        ->execute();
+      $result = user_badges_load_badges();
       $items = array();
       foreach ($result as $badge) {
         $items[] = theme('user_badge', array('badge' => $badge))
