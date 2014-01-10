@@ -811,7 +811,7 @@ function user_badges_change_form_submit($form, &$form_state) {
  * @param $uid is the user id
  * @param $quiet suppresses message display
  */
-function user_badges_user_save($edit, $uid, $quiet = TRUE) {
+function user_badges_user_save($edit, $uid, $quiet = TRUE, $type = NULL) {
   $badges = user_badges_get_badges($uid);
 
   if (is_array($edit)) {
@@ -830,7 +830,7 @@ function user_badges_user_save($edit, $uid, $quiet = TRUE) {
 
     foreach ($added as $bid) {
       if (!array_key_exists($bid, $badges)) {
-        $success = (boolean) user_badges_user_add_badge($uid, $bid);
+        $success = (boolean) user_badges_user_add_badge($uid, $bid, $type);
       }
     }
 
@@ -840,7 +840,7 @@ function user_badges_user_save($edit, $uid, $quiet = TRUE) {
     foreach ($removed as $bid) {
       // and user has this badge
       if (array_key_exists($bid, $badges)) {
-        $success = $success && (boolean) user_badges_user_remove_badge($uid, $bid);
+        $success = $success && (boolean) user_badges_user_remove_badge($uid, $bid, $type);
       }
     }
     if ($success && !$quiet) {
