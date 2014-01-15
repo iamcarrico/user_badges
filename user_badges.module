@@ -987,8 +987,7 @@ function user_badges_get_badges($uid, $options = array()) {
       // Display the badge if there's no limit or if the badge is unhideable or if we are within our limit.
       if ($limit != 0 || $badge->unhideable == 1) {
         if ($uid == 'select') {
-          $badges[$uid][$badge->bid] = $badge->name;
-          $badges[$badge->bid]['#attributes'] = array('class' => array("badge badge-" . $badge->bid . " " . drupal_html_class($badge->name)));
+          $badges[$uid][$stringified_options][$badge->bid] = $badge->name;
         }
         else {
           $badges[$uid][$stringified_options][$badge->bid] = $badge;
