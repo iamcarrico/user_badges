@@ -31,24 +31,27 @@ function user_badges_action_info() {
 function user_badges_add_badge_action(&$account, $context = array()) {
   if (isset($account->uid)) {
     $uid = $account->uid;
+    $user_name = $account->name;
   }
   elseif (isset($context['uid'])) {
     $uid = $context['uid'];
+    $user_name = $context['uid']->name;
   }
   else {
     global $user;
     $uid = $user->uid;
+    $user_name = $user->name;
   }
   $success = TRUE;
   $badges = user_badges_get_badges('all');
 
   foreach ($context['badges'] as $bid) {
-    $success = (boolean) user_badges_user_add_badge($uid, $bid, 'uid');
+    $success = (boolean) user_badges_user_add_badge($uid, $bid, 'user');
     if ($success) {
-      watchdog('action', 'Added user badge %badge to user %name.', array('%name' => check_plain($user->name), '%badge' => check_plain($badges[$bid]->name)));
+      watchdog('action', 'Added user badge %badge to user %name.', array('%name' => check_plain($user_name), '%badge' => check_plain($badges[$bid]->name)));
     }
     else {
-      watchdog('action', 'Unable to add user badge %badge to user %name.', array('%name' => check_plain($user->name), '%badge' => check_plain($badges[$bid]->name)), WATCHDOG_WARNING);
+      watchdog('action', 'Unable to add user badge %badge to user %name.', array('%name' => check_plain($user_name), '%badge' => check_plain($badges[$bid]->name)), WATCHDOG_WARNING);
     }
   }
 }
@@ -97,24 +100,27 @@ function user_badges_add_badge_action_submit($form, $form_state) {
 function user_badges_remove_badge_action(&$account, $context = array()) {
   if (isset($account->uid)) {
     $uid = $account->uid;
+    $user_name = $account->name;
   }
   elseif (isset($context['uid'])) {
     $uid = $context['uid'];
+    $user_name = $context['uid']->name;
   }
   else {
     global $user;
     $uid = $user->uid;
+    $user_name = $user->name;
   }
   $success = TRUE;
   $badges = user_badges_get_badges('all');
 
   foreach ($context['badges'] as $bid) {
-    $success = (boolean) user_badges_user_remove_badge($uid, $bid, 'uid');
+    $success = (boolean) user_badges_user_remove_badge($uid, $bid, 'user');
     if ($success) {
-      watchdog('action', 'Removed user badge %badge to user %name.', array('%name' => check_plain($user->name), '%badge' => check_plain($badges[$bid]->name)));
+      watchdog('action', 'Removed user badge %badge to user %name.', array('%name' => check_plain($user_name), '%badge' => check_plain($badges[$bid]->name)));
     }
     else {
-      watchdog('action', 'Unable to remove user badge %badge to user %name.', array('%name' => check_plain($user->name), '%badge' => check_plain($badges[$bid]->name)), WATCHDOG_WARNING);
+      watchdog('action', 'Unable to remove user badge %badge to user %name.', array('%name' => check_plain($user_name), '%badge' => check_plain($badges[$bid]->name)), WATCHDOG_WARNING);
     }
   }
 }
